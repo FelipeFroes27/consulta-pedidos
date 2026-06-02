@@ -20,7 +20,15 @@ st.markdown("""
 
 /* Remove barra superior */
 header {
-    visibility: hidden;
+    visibility: visible;
+    height: 0rem;
+    background: transparent;
+}
+
+[data-testid="collapsedControl"],
+[data-testid="stSidebarCollapseButton"] {
+    visibility: visible;
+    display: block;
 }
 
 /* Remove menu deploy */
