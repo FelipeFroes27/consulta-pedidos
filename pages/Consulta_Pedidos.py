@@ -8,7 +8,8 @@ from utils.sheets import carregar_dados
 
 st.set_page_config(
     page_title="Consulta de Pedidos",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # ==================================================
@@ -18,19 +19,22 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* Remove barra superior */
-header {
-    visibility: hidden;
+/* Mantem a seta lateral e deixa a barra superior transparente */
+header,
+header[data-testid="stHeader"] {
+    visibility: visible !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: 0 !important;
 }
 
-/* Remove menu deploy */
-[data-testid="stToolbar"] {
-    display: none;
+[data-testid="stStatusWidget"] {
+    display: none !important;
 }
 
 /* Remove decoração superior */
 [data-testid="stDecoration"] {
-    display: none;
+    display: none !important;
 }
 
 /* Remove menu hamburguer */
@@ -44,8 +48,9 @@ footer {
 }
 
 /* Reduz espaço superior */
-.block-container {
-    padding-top: 1rem;
+.block-container,
+[data-testid="stMainBlockContainer"] {
+    padding-top: 0.75rem;
     padding-bottom: 0rem;
 }
 
@@ -56,6 +61,11 @@ div[data-baseweb="select"] {
 
 </style>
 """, unsafe_allow_html=True)
+
+with st.sidebar:
+    st.page_link("app.py", label="Inicio")
+    st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
+    st.page_link("pages/Cronograma.py", label="Cronograma")
 
 # ==================================================
 # TÍTULO

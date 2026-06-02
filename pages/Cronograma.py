@@ -7,7 +7,7 @@ import streamlit as st
 from utils.sheets import carregar_dados
 
 
-st.set_page_config(page_title="Cronograma", layout="wide")
+st.set_page_config(page_title="Cronograma", layout="wide", initial_sidebar_state="expanded")
 
 
 MESES_PT = {
@@ -32,17 +32,30 @@ PALETA_PLOTLY = ["#2563eb", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4
 st.markdown(
     """
     <style>
-    header, footer, #MainMenu {visibility: hidden;}
-    [data-testid="stToolbar"], [data-testid="stDecoration"] {display: none;}
+    header,
+    header[data-testid="stHeader"] {
+        visibility: visible !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border: 0 !important;
+    }
+
+    [data-testid="stStatusWidget"] {
+        display: none !important;
+    }
+
+    footer, #MainMenu {visibility: hidden;}
+    [data-testid="stDecoration"] {display: none !important;}
 
     .stApp {
         background: #f7f9fc;
         color: #101828;
     }
 
-    .block-container {
+    .block-container,
+    [data-testid="stMainBlockContainer"] {
         max-width: 1540px;
-        padding-top: 1.1rem;
+        padding-top: 0.75rem;
         padding-bottom: 1.4rem;
     }
 
@@ -461,6 +474,11 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+with st.sidebar:
+    st.page_link("app.py", label="Inicio")
+    st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
+    st.page_link("pages/Cronograma.py", label="Cronograma")
 
 
 def texto(serie):
