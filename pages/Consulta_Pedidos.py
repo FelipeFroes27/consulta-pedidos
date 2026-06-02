@@ -19,28 +19,24 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-<<<<<<< HEAD
 /* Mantem a seta lateral e deixa a barra superior transparente */
 header,
 header[data-testid="stHeader"] {
     visibility: visible !important;
-=======
+
 /* Mantem a seta lateral sem mostrar a barra superior */
 header,
 header[data-testid="stHeader"] {
     visibility: visible !important;
     height: 0rem !important;
     min-height: 0rem !important;
->>>>>>> 675696a9834dd229efdc021a8a113bcd036efdee
     background: transparent !important;
     box-shadow: none !important;
     border: 0 !important;
 }
 
-<<<<<<< HEAD
 [data-testid="stStatusWidget"] {
     display: none !important;
-=======
 [data-testid="collapsedControl"],
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="stSidebarCollapseButton"] {
@@ -52,7 +48,6 @@ header[data-testid="stHeader"] {
     top: 0.55rem !important;
     left: 0.55rem !important;
     z-index: 999999 !important;
->>>>>>> 675696a9834dd229efdc021a8a113bcd036efdee
 }
 
 [data-testid="stHeaderActionElements"],
@@ -69,7 +64,6 @@ header[data-testid="stHeader"] {
 footer {
     visibility: hidden;
 }
-<<<<<<< HEAD
 
 /* Reduz espaço superior */
 .block-container,
@@ -95,8 +89,6 @@ with st.sidebar:
 # TÍTULO
 # ==================================================
 
-=======
->>>>>>> 675696a9834dd229efdc021a8a113bcd036efdee
 st.markdown("## Consulta de Pedidos")
 
 # ==================================================
