@@ -18,55 +18,44 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* Remove barra superior */
-header {
-    visibility: hidden;
+/* Mantem a seta lateral sem mostrar a barra superior */
+header,
+header[data-testid="stHeader"] {
+    visibility: visible !important;
+    height: 0rem !important;
+    min-height: 0rem !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: 0 !important;
 }
 
 [data-testid="collapsedControl"],
+[data-testid="stSidebarCollapsedControl"],
 [data-testid="stSidebarCollapseButton"] {
-    visibility: visible;
-    display: block;
+    visibility: visible !important;
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: fixed !important;
+    top: 0.55rem !important;
+    left: 0.55rem !important;
+    z-index: 999999 !important;
 }
 
-/* Remove menu deploy */
-[data-testid="stToolbar"] {
-    display: none;
-}
-
-/* Remove decoração superior */
+[data-testid="stHeaderActionElements"],
+[data-testid="stStatusWidget"],
+[data-testid="stToolbar"],
 [data-testid="stDecoration"] {
-    display: none;
+    display: none !important;
 }
 
-/* Remove menu hamburguer */
 #MainMenu {
     visibility: hidden;
 }
 
-/* Remove rodapé */
 footer {
     visibility: hidden;
 }
-
-/* Reduz espaço superior */
-.block-container {
-    padding-top: 1rem;
-    padding-bottom: 0rem;
-}
-
-/* Compacta componentes */
-div[data-baseweb="select"] {
-    font-size: 14px;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ==================================================
-# TÍTULO
-# ==================================================
-
 st.markdown("## Consulta de Pedidos")
 
 # ==================================================
