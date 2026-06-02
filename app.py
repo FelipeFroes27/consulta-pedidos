@@ -5,8 +5,8 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("Sistema de Compras")
+st.title("Sistema de Logistico")
 
 st.write(
-    "Utilize o menu lateral para navegar entre as telas."
+    "Sistema desenvolvido para monitorar as movimentações logisticas, utilize o menu lateral para navegar entre as telas."
 )
