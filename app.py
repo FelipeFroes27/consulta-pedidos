@@ -1,5 +1,7 @@
 import streamlit as st
 
+st.sidebar.write("MENU")
+
 st.set_page_config(
     page_title="Sistema de Compras",
     layout="wide"
