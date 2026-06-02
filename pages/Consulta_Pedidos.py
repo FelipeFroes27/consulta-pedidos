@@ -20,9 +20,7 @@ st.markdown("""
 
 /* Remove barra superior */
 header {
-    visibility: visible;
-    height: 0rem;
-    background: transparent;
+    visibility: hidden;
 }
 
 [data-testid="collapsedControl"],
