@@ -1,0 +1,1016 @@
+from html import escape
+
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+
+from utils.sheets import carregar_dados
+
+
+st.set_page_config(page_title="Cronograma", layout="wide")
+
+
+MESES_PT = {
+    1: "Janeiro",
+    2: "Fevereiro",
+    3: "Marco",
+    4: "Abril",
+    5: "Maio",
+    6: "Junho",
+    7: "Julho",
+    8: "Agosto",
+    9: "Setembro",
+    10: "Outubro",
+    11: "Novembro",
+    12: "Dezembro",
+}
+
+CORES_GRUPO = ["#2563eb", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"]
+PALETA_PLOTLY = ["#2563eb", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#64748b"]
+
+
+st.markdown(
+    """
+    <style>
+    header, footer, #MainMenu {visibility: hidden;}
+    [data-testid="stToolbar"], [data-testid="stDecoration"] {display: none;}
+
+    .stApp {
+        background: #f7f9fc;
+        color: #101828;
+    }
+
+    .block-container {
+        max-width: 1540px;
+        padding-top: 1.1rem;
+        padding-bottom: 1.4rem;
+    }
+
+    div[data-testid="stVerticalBlock"] {
+        gap: 1.1rem;
+    }
+
+    div[data-testid="column"] {
+        min-width: 0;
+    }
+
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border: 1px solid #dfe6ef;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(16, 24, 40, .055);
+        padding: 14px 16px 16px 16px;
+    }
+
+    div[data-testid="stRadio"] {
+        margin-top: -4px;
+        margin-bottom: 6px;
+    }
+
+    .page-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: .2rem;
+    }
+
+    .page-title h1 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 29px;
+        line-height: 1.05;
+        letter-spacing: 0;
+        font-weight: 850;
+    }
+
+    .page-title p {
+        margin: 6px 0 0 0;
+        color: #667085;
+        font-size: 14px;
+    }
+
+    .month-title {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 46px;
+        width: 100%;
+        border-radius: 8px;
+        color: #2563eb;
+        font-size: 29px;
+        line-height: 1;
+        font-weight: 850;
+        letter-spacing: 0;
+    }
+
+    .nav-button .stButton > button,
+    .refresh-button .stButton > button {
+        height: 44px;
+        border-radius: 8px;
+        border: 1px solid #dce3ee;
+        background: #ffffff;
+        color: #2563eb;
+        font-weight: 800;
+        box-shadow: 0 6px 18px rgba(16, 24, 40, .05);
+    }
+
+    .nav-button .stButton > button:hover,
+    .refresh-button .stButton > button:hover {
+        border-color: #2563eb;
+        background: #f8fbff;
+    }
+
+    .kpi-card {
+        display: grid;
+        grid-template-columns: 58px 1fr;
+        gap: 16px;
+        align-items: center;
+        min-height: 108px;
+        padding: 18px;
+        border: 1px solid #dfe6ef;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(16, 24, 40, .055);
+    }
+
+    .kpi-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 58px;
+        height: 58px;
+        border-radius: 999px;
+        font-size: 25px;
+        font-weight: 850;
+    }
+
+    .icon-blue {background: #eaf1ff; color: #2563eb;}
+    .icon-green {background: #e8f8ef; color: #10a66a;}
+    .icon-orange {background: #fff1df; color: #f97316;}
+    .icon-purple {background: #f1e8ff; color: #8b5cf6;}
+
+    .kpi-label {
+        color: #475467;
+        font-size: 14px;
+        font-weight: 650;
+    }
+
+    .kpi-value {
+        margin-top: 4px;
+        color: #0f172a;
+        font-size: 27px;
+        line-height: 1;
+        font-weight: 850;
+    }
+
+    .kpi-value.blue {color: #2563eb;}
+    .kpi-value.green {color: #10a66a;}
+    .kpi-value.orange {color: #f97316;}
+    .kpi-value.purple {color: #8b5cf6;}
+
+    .kpi-note {
+        margin-top: 7px;
+        color: #667085;
+        font-size: 12px;
+    }
+
+    .panel {
+        border: 1px solid #dfe6ef;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(16, 24, 40, .055);
+        padding: 16px;
+    }
+
+    .soft-panel {
+        border: 1px solid #dfe6ef;
+        border-radius: 8px;
+        background:
+            linear-gradient(135deg, rgba(37, 99, 235, .06), rgba(16, 185, 129, .05)),
+            #ffffff;
+        box-shadow: 0 8px 24px rgba(16, 24, 40, .055);
+        padding: 16px;
+    }
+
+    .panel-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 12px 0;
+        color: #101828;
+        font-size: 16px;
+        font-weight: 850;
+    }
+
+    .next-card {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr) 58px 58px;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 11px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        border: 1px solid #dfe6ef;
+        background: #f8fbff;
+    }
+
+    .next-card.today {background: #ecfdf5; border-color: #bbf7d0;}
+    .next-card.soon {background: #eff6ff; border-color: #bfdbfe;}
+    .next-card.attention {background: #fff7ed; border-color: #fed7aa;}
+    .next-card.selected {outline: 2px solid #2563eb; background: #eff6ff;}
+
+    .next-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        background: #2563eb;
+        color: white;
+        font-size: 17px;
+        font-weight: 850;
+    }
+
+    .next-card.today .next-icon {background: #16a34a;}
+    .next-card.attention .next-icon {background: #f97316;}
+
+    .next-when {
+        color: #101828;
+        font-size: 14px;
+        line-height: 1.25;
+        font-weight: 800;
+    }
+
+    .next-date {
+        display: block;
+        margin-top: 3px;
+        color: #667085;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .next-extra {
+        display: block;
+        margin-top: 5px;
+        color: #2563eb;
+        font-size: 11px;
+        font-weight: 800;
+        max-width: 170px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .next-metric {
+        text-align: right;
+        min-width: 0;
+    }
+
+    .next-number {
+        color: #2563eb;
+        font-size: 16px;
+        line-height: 1;
+        font-weight: 850;
+    }
+
+    .next-label {
+        margin-top: 4px;
+        color: #667085;
+        font-size: 11px;
+    }
+
+    .analysis-select {
+        margin-bottom: 10px;
+    }
+
+    .analysis-select div[data-baseweb="select"] {
+        font-size: 13px;
+    }
+
+    .next-action .stButton > button {
+        min-height: 30px;
+        margin-top: -4px;
+        margin-bottom: 6px;
+        border-radius: 8px;
+        border: 1px solid #dbe7ff;
+        background: #ffffff;
+        color: #2563eb;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .next-action .stButton > button:hover {
+        border-color: #2563eb;
+        background: #eff6ff;
+    }
+
+    .mini-table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+
+    .mini-table th {
+        padding: 10px 12px;
+        border: 1px solid #e5eaf2;
+        background: #f8fafc;
+        color: #475467;
+        text-align: left;
+        font-weight: 800;
+    }
+
+    .mini-table td {
+        padding: 10px 12px;
+        border: 1px solid #e5eaf2;
+        color: #344054;
+        background: #ffffff;
+    }
+
+    .mini-table td.num,
+    .mini-table th.num {
+        text-align: center;
+    }
+
+    .tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 72px;
+        max-width: 160px;
+        padding: 4px 9px;
+        border-radius: 6px;
+        background: #eaf1ff;
+        color: #2563eb;
+        font-size: 11px;
+        font-weight: 850;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .tag.green {background: #e8f8ef; color: #047857;}
+    .tag.orange {background: #fff1df; color: #c2410c;}
+    .tag.slate {background: #f1f5f9; color: #334155;}
+
+    .insight-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .insight {
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #dfe6ef;
+        background: rgba(255, 255, 255, .74);
+    }
+
+    .insight-label {
+        color: #667085;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .insight-value {
+        margin-top: 5px;
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 850;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .progress-row {
+        display: grid;
+        grid-template-columns: minmax(96px, 1fr) 2.5fr 76px;
+        align-items: center;
+        gap: 12px;
+        margin: 15px 0;
+    }
+
+    .progress-name {
+        color: #101828;
+        font-size: 13px;
+        font-weight: 800;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .progress-track {
+        height: 12px;
+        border-radius: 999px;
+        background: #eef2f7;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 999px;
+    }
+
+    .progress-value {
+        color: #475467;
+        font-size: 12px;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 110px;
+        border: 1px dashed #d0d5dd;
+        border-radius: 8px;
+        color: #667085;
+        background: #ffffff;
+        text-align: center;
+    }
+
+    div[data-testid="stDataFrame"] {
+        border: 1px solid #dfe6ef;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    div[data-testid="stExpander"] {
+        margin-top: .35rem;
+    }
+
+    @media (max-width: 1000px) {
+        .page-head {
+            flex-direction: column;
+        }
+
+        .next-card {
+            grid-template-columns: 38px 1fr;
+        }
+
+        .next-metric {
+            text-align: left;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+def texto(serie):
+    return serie.fillna("").astype(str).str.strip()
+
+
+def preparar_dados(df_original):
+    df = df_original.copy()
+    obrigatorias = ["Data Entrega", "Numero do Pedido", "Subgrupo", "Grupo"]
+    faltantes = [col for col in obrigatorias if col not in df.columns]
+
+    if faltantes:
+        st.error("A aba Pedidos precisa conter estas colunas: " + ", ".join(obrigatorias))
+        st.stop()
+
+    df["Data Entrega"] = pd.to_datetime(df["Data Entrega"], errors="coerce", dayfirst=True)
+    df = df[df["Data Entrega"].notna()].copy()
+
+    if df.empty:
+        return df
+
+    df["Numero do Pedido"] = texto(df["Numero do Pedido"])
+    df["Subgrupo"] = texto(df["Subgrupo"]).replace("", "Nao informado")
+    df["Grupo"] = texto(df["Grupo"]).replace("", "Nao informado")
+    df["Data Recebimento"] = df["Data Entrega"].dt.date
+
+    if "Tipo" in df.columns:
+        df["Tipo"] = texto(df["Tipo"]).replace("", "Nao informado")
+    else:
+        df["Tipo"] = "Nao informado"
+
+    if "Categoria" in df.columns:
+        df["Categoria"] = texto(df["Categoria"]).replace("", "Nao informado")
+    else:
+        df["Categoria"] = "Nao informado"
+
+    if "Qtde" in df.columns:
+        df["Qtde"] = pd.to_numeric(df["Qtde"], errors="coerce").fillna(0)
+    else:
+        df["Qtde"] = 1
+
+    for coluna in ["Codigo", "Descricao", "Marca"]:
+        if coluna in df.columns:
+            df[coluna] = texto(df[coluna])
+
+    return df
+
+
+def mes_formatado(periodo):
+    return f"{MESES_PT[periodo.month]} {periodo.year}"
+
+
+def numero(valor):
+    return f"{int(valor):,}".replace(",", ".")
+
+
+def render_kpi(titulo, valor, nota, icone, cor):
+    st.markdown(
+        f"""
+        <div class="kpi-card">
+            <div class="kpi-icon icon-{cor}">{icone}</div>
+            <div>
+                <div class="kpi-label">{escape(titulo)}</div>
+                <div class="kpi-value {cor}">{numero(valor)}</div>
+                <div class="kpi-note">{escape(nota)}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def resumo_por_data(df):
+    return (
+        df.groupby("Data Recebimento")
+        .agg(
+            Pedidos=("Numero do Pedido", "nunique"),
+            Itens=("Qtde", "sum"),
+            Linhas=("Numero do Pedido", "size"),
+            Fornecedores=("Subgrupo", "nunique"),
+            Principal_Fornecedor=("Subgrupo", lambda s: s.value_counts().index[0] if not s.empty else ""),
+            Grupo_Principal=("Grupo", lambda s: s.value_counts().index[0] if not s.empty else ""),
+            Tipo_Principal=("Tipo", lambda s: s.value_counts().index[0] if not s.empty else ""),
+        )
+        .reset_index()
+        .sort_values("Data Recebimento")
+    )
+
+
+def label_prazo(data_recebimento):
+    hoje = pd.Timestamp.today().normalize().date()
+    dias = (data_recebimento - hoje).days
+
+    if dias == 0:
+        return "Hoje", "today"
+    if dias == 1:
+        return "Amanha", "today"
+    if dias <= 3:
+        return f"Em {dias} dias", "attention"
+    return f"Em {dias} dias", "soon"
+
+
+def proximas_datas(df, limite=5):
+    hoje = pd.Timestamp.today().normalize().date()
+    return resumo_por_data(df[df["Data Recebimento"] >= hoje]).head(limite)
+
+
+def render_proximas_entregas(proximas):
+    if "cronograma_data_alerta" not in st.session_state and not proximas.empty:
+        st.session_state.cronograma_data_alerta = proximas.iloc[0]["Data Recebimento"].strftime("%Y-%m-%d")
+
+    st.markdown('<div class="panel"><div class="panel-title">○ Proximas entregas</div>', unsafe_allow_html=True)
+
+    if proximas.empty:
+        st.markdown('<div class="empty">Nenhum recebimento futuro cadastrado.</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+
+    opcoes = {
+        f"{label_prazo(linha['Data Recebimento'])[0]} - {linha['Data Recebimento'].strftime('%d/%m/%Y')}": linha["Data Recebimento"].strftime("%Y-%m-%d")
+        for _, linha in proximas.iterrows()
+    }
+    valores = list(opcoes.values())
+    valor_atual = st.session_state.get("cronograma_data_alerta", valores[0])
+    indice_atual = valores.index(valor_atual) if valor_atual in valores else 0
+
+    st.markdown('<div class="analysis-select">', unsafe_allow_html=True)
+    escolha = st.selectbox(
+        "Entrega analisada",
+        list(opcoes.keys()),
+        index=indice_atual,
+        label_visibility="collapsed",
+    )
+    st.session_state.cronograma_data_alerta = opcoes[escolha]
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    for _, linha in proximas.iterrows():
+        data_recebimento = linha["Data Recebimento"]
+        quando, classe = label_prazo(data_recebimento)
+        selecionado = "selected" if data_recebimento.strftime("%Y-%m-%d") == st.session_state.cronograma_data_alerta else ""
+
+        st.markdown(
+            f"""
+            <div class="next-card {classe} {selecionado}">
+                <div class="next-icon">▦</div>
+                <div>
+                    <div class="next-when">{escape(quando)}</div>
+                    <span class="next-date">{data_recebimento.strftime("%d/%m/%Y")}</span>
+                    <span class="next-extra">{escape(str(linha["Grupo_Principal"]))} | {escape(str(linha["Tipo_Principal"]))}</span>
+                </div>
+                <div class="next-metric">
+                    <div class="next-number">{numero(linha["Pedidos"])}</div>
+                    <div class="next-label">Pedidos</div>
+                </div>
+                <div class="next-metric">
+                    <div class="next-number">{numero(linha["Itens"])}</div>
+                    <div class="next-label">Itens</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def render_tabela_mes(resumo):
+    linhas = []
+    for _, linha in resumo.head(8).iterrows():
+        linhas.append(
+            "<tr>"
+            f"<td>{linha['Data Recebimento'].strftime('%d/%m/%Y')}</td>"
+            f"<td class='num'>{numero(linha['Pedidos'])}</td>"
+            f"<td class='num'>{numero(linha['Itens'])}</td>"
+            f"<td class='num'>{numero(linha['Fornecedores'])}</td>"
+            f"<td><span class='tag' title='{escape(str(linha['Principal_Fornecedor']))}'>{escape(str(linha['Principal_Fornecedor']))}</span></td>"
+            f"<td><span class='tag green' title='{escape(str(linha['Grupo_Principal']))}'>{escape(str(linha['Grupo_Principal']))}</span></td>"
+            f"<td><span class='tag orange' title='{escape(str(linha['Tipo_Principal']))}'>{escape(str(linha['Tipo_Principal']))}</span></td>"
+            "</tr>"
+        )
+
+    if not linhas:
+        return '<div class="empty">Sem recebimentos neste mes.</div>'
+
+    return (
+        "<table class='mini-table'>"
+        "<thead>"
+        "<tr>"
+        "<th>Data</th>"
+        "<th class='num'>Pedidos</th>"
+        "<th class='num'>Itens</th>"
+        "<th class='num'>Fornecedores</th>"
+        "<th>Fornecedor principal</th>"
+        "<th>Grupo principal</th>"
+        "<th>Tipo principal</th>"
+        "</tr>"
+        "</thead>"
+        "<tbody>"
+        + "".join(linhas)
+        + "</tbody></table>"
+    )
+
+
+def render_ranking(titulo, df_ranking, coluna_nome, sufixo):
+    st.markdown(f'<div class="panel"><div class="panel-title">{escape(titulo)}</div>', unsafe_allow_html=True)
+
+    if df_ranking.empty:
+        st.markdown('<div class="empty">Sem dados para exibir.</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+
+    maximo = max(float(df_ranking["Pedidos"].max()), 1)
+
+    for indice, (_, linha) in enumerate(df_ranking.iterrows()):
+        largura = int((float(linha["Pedidos"]) / maximo) * 100)
+        cor = CORES_GRUPO[indice % len(CORES_GRUPO)]
+        nome = escape(str(linha[coluna_nome]))
+
+        st.markdown(
+            f"""
+            <div class="progress-row">
+                <div class="progress-name" title="{nome}">{nome}</div>
+                <div class="progress-track">
+                    <div class="progress-fill" style="width:{largura}%; background:{cor};"></div>
+                </div>
+                <div class="progress-value">{numero(linha["Pedidos"])} {sufixo}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def valor_top(df, coluna):
+    if df.empty or coluna not in df.columns:
+        return "Sem dados", 0
+
+    ranking = df.groupby(coluna).agg(Pedidos=("Numero do Pedido", "nunique")).reset_index()
+    if ranking.empty:
+        return "Sem dados", 0
+
+    linha = ranking.sort_values("Pedidos", ascending=False).iloc[0]
+    return str(linha[coluna]), int(linha["Pedidos"])
+
+
+def render_leitura_operacional(df_mes):
+    grupo, pedidos_grupo = valor_top(df_mes, "Grupo")
+    tipo, pedidos_tipo = valor_top(df_mes, "Tipo")
+    fornecedor, pedidos_fornecedor = valor_top(df_mes, "Subgrupo")
+
+    st.markdown(
+        f"""
+        <div class="soft-panel">
+            <div class="panel-title">Leitura operacional do mes</div>
+            <div class="insight-grid">
+                <div class="insight">
+                    <div class="insight-label">Grupo dominante</div>
+                    <div class="insight-value" title="{escape(grupo)}">{escape(grupo)}</div>
+                    <div class="kpi-note">{numero(pedidos_grupo)} pedidos</div>
+                </div>
+                <div class="insight">
+                    <div class="insight-label">Tipo dominante</div>
+                    <div class="insight-value" title="{escape(tipo)}">{escape(tipo)}</div>
+                    <div class="kpi-note">{numero(pedidos_tipo)} pedidos</div>
+                </div>
+                <div class="insight">
+                    <div class="insight-label">Fornecedor mais recorrente</div>
+                    <div class="insight-value" title="{escape(fornecedor)}">{escape(fornecedor)}</div>
+                    <div class="kpi-note">{numero(pedidos_fornecedor)} pedidos</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_analise_entrega(df, data_alerta):
+    if data_alerta is None:
+        st.markdown('<div class="empty">Selecione uma proxima entrega para analisar.</div>', unsafe_allow_html=True)
+        return
+
+    df_alerta = df[df["Data Recebimento"] == data_alerta].copy()
+
+    if df_alerta.empty:
+        st.markdown('<div class="empty">Nao ha itens para a data selecionada.</div>', unsafe_allow_html=True)
+        return
+
+    pedidos = df_alerta["Numero do Pedido"].nunique()
+    itens = df_alerta["Qtde"].sum()
+    fornecedores = df_alerta["Subgrupo"].nunique()
+    lista_fornecedores = sorted(df_alerta["Subgrupo"].dropna().astype(str).unique())
+    fornecedores_resumo = ", ".join(lista_fornecedores[:3])
+    if len(lista_fornecedores) > 3:
+        fornecedores_resumo += f" +{len(lista_fornecedores) - 3}"
+
+    st.markdown(
+        f"""
+        <div class="panel-title">Analise da entrega de {data_alerta.strftime("%d/%m/%Y")}</div>
+        <div class="insight-grid" style="margin-bottom: 12px;">
+            <div class="insight">
+                <div class="insight-label">Pedidos</div>
+                <div class="insight-value">{numero(pedidos)}</div>
+            </div>
+            <div class="insight">
+                <div class="insight-label">Itens</div>
+                <div class="insight-value">{numero(itens)}</div>
+            </div>
+            <div class="insight">
+                <div class="insight-label">Fornecedores</div>
+                <div class="insight-value" title="{escape(', '.join(lista_fornecedores))}">{escape(fornecedores_resumo)}</div>
+                <div class="kpi-note">{numero(fornecedores)} fornecedores</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    grupo, categoria = st.columns(2)
+
+    with grupo:
+        st.markdown('<div class="panel-title" style="font-size:14px; margin-bottom:0;">Itens por Grupo</div>', unsafe_allow_html=True)
+        por_grupo = (
+            df_alerta.groupby("Grupo")
+            .agg(Itens=("Qtde", "sum"), Pedidos=("Numero do Pedido", "nunique"))
+            .reset_index()
+            .sort_values("Itens", ascending=False)
+        )
+        fig_grupo = px.pie(
+            por_grupo,
+            names="Grupo",
+            values="Itens",
+            hole=.55,
+            color_discrete_sequence=PALETA_PLOTLY,
+        )
+        fig_grupo.update_traces(
+            textinfo="value",
+            texttemplate="%{value}",
+            hovertemplate="<b>%{label}</b><br>Itens: %{value}<extra></extra>",
+        )
+        st.plotly_chart(estilizar_grafico(fig_grupo, altura=270, legenda=True), use_container_width=True, config={"displayModeBar": False})
+
+    with categoria:
+        st.markdown('<div class="panel-title" style="font-size:14px; margin-bottom:0;">Itens por Categoria</div>', unsafe_allow_html=True)
+        por_categoria = (
+            df_alerta.groupby("Categoria")
+            .agg(Itens=("Qtde", "sum"), Pedidos=("Numero do Pedido", "nunique"))
+            .reset_index()
+            .sort_values("Itens", ascending=False)
+        )
+        fig_categoria = px.pie(
+            por_categoria,
+            names="Categoria",
+            values="Itens",
+            hole=.55,
+            color_discrete_sequence=["#f97316", "#2563eb", "#10b981", "#8b5cf6", "#64748b"],
+        )
+        fig_categoria.update_traces(
+            textinfo="value",
+            texttemplate="%{value}",
+            hovertemplate="<b>%{label}</b><br>Itens: %{value}<extra></extra>",
+        )
+        st.plotly_chart(estilizar_grafico(fig_categoria, altura=270, legenda=True), use_container_width=True, config={"displayModeBar": False})
+
+
+def estilizar_grafico(fig, altura=282, legenda=False):
+    fig.update_layout(
+        height=altura,
+        margin=dict(l=8, r=8, t=12, b=8),
+        paper_bgcolor="#ffffff",
+        plot_bgcolor="#ffffff",
+        font=dict(family="Arial", size=12, color="#475467"),
+        showlegend=legenda,
+    )
+    fig.update_xaxes(showgrid=False, linecolor="#e5eaf2", tickfont=dict(color="#667085"))
+    fig.update_yaxes(gridcolor="#e9eef5", linecolor="#e5eaf2", tickfont=dict(color="#667085"))
+    return fig
+
+
+df = preparar_dados(carregar_dados())
+
+st.markdown(
+    """
+    <div class="page-head">
+        <div class="page-title">
+            <h1>Cronograma de Recebimentos</h1>
+            <p>Acompanhe os recebimentos previstos por data, fornecedor e grupo operacional.</p>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+if df.empty:
+    st.markdown('<div class="empty">Nao ha datas validas na coluna Data Entrega da aba Pedidos.</div>', unsafe_allow_html=True)
+    st.stop()
+
+meses = sorted(df["Data Entrega"].dt.to_period("M").unique())
+mes_atual = pd.Timestamp.today().to_period("M")
+idx_padrao = meses.index(mes_atual) if mes_atual in meses else len(meses) - 1
+
+if "cronograma_mes_idx" not in st.session_state:
+    st.session_state.cronograma_mes_idx = idx_padrao
+
+mes_selecionado = meses[st.session_state.cronograma_mes_idx]
+
+nav_1, nav_2, nav_3, nav_4 = st.columns([.55, 3.1, .55, .8])
+
+with nav_1:
+    st.markdown('<div class="nav-button">', unsafe_allow_html=True)
+    if st.button("‹", use_container_width=True, disabled=st.session_state.cronograma_mes_idx <= 0):
+        st.session_state.cronograma_mes_idx -= 1
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+with nav_2:
+    st.markdown(f'<div class="month-title">{escape(mes_formatado(mes_selecionado))}</div>', unsafe_allow_html=True)
+
+with nav_3:
+    st.markdown('<div class="nav-button">', unsafe_allow_html=True)
+    if st.button("›", use_container_width=True, disabled=st.session_state.cronograma_mes_idx >= len(meses) - 1):
+        st.session_state.cronograma_mes_idx += 1
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+with nav_4:
+    st.markdown('<div class="refresh-button">', unsafe_allow_html=True)
+    if st.button("Atualizar", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+df_mes = df[df["Data Entrega"].dt.to_period("M") == mes_selecionado].copy()
+resumo_mes = resumo_por_data(df_mes)
+
+k1, k2, k3, k4 = st.columns(4)
+
+with k1:
+    render_kpi("Pedidos do Mes", df_mes["Numero do Pedido"].nunique(), "Total de pedidos", "▤", "blue")
+with k2:
+    render_kpi("Itens do Mes", df_mes["Qtde"].sum(), "Soma das quantidades", "□", "green")
+with k3:
+    render_kpi("Fornecedores", df_mes["Subgrupo"].nunique(), "Fornecedores diferentes", "●", "orange")
+with k4:
+    render_kpi("Dias com Entrega", df_mes["Data Recebimento"].nunique(), "Dias no mes", "▣", "purple")
+
+render_leitura_operacional(df_mes)
+
+proximas = proximas_datas(df)
+
+col_proximas, col_grafico = st.columns([.9, 2.35])
+
+with col_proximas:
+    render_proximas_entregas(proximas)
+
+with col_grafico:
+    with st.container(border=True):
+        data_alerta = None
+        if "cronograma_data_alerta" in st.session_state:
+            data_alerta = pd.to_datetime(st.session_state.cronograma_data_alerta).date()
+        render_analise_entrega(df, data_alerta)
+
+col_tabela, col_rank = st.columns([1.65, 1])
+
+with col_tabela:
+    st.markdown('<div class="panel"><div class="panel-title">Cronograma do mes</div></div>', unsafe_allow_html=True)
+    st.markdown(render_tabela_mes(resumo_mes), unsafe_allow_html=True)
+
+    datas_disponiveis = ["Visao do mes"] + [
+        data.strftime("%d/%m/%Y") for data in resumo_mes["Data Recebimento"].tolist()
+    ]
+    data_label = st.selectbox("Detalhar data", datas_disponiveis)
+
+with col_rank:
+    aba_fornecedor, aba_grupo, aba_tipo = st.tabs(["Fornecedores", "Grupos", "Tipos"])
+
+    with aba_fornecedor:
+        ranking_fornecedor = (
+            df_mes.groupby("Subgrupo")
+            .agg(Pedidos=("Numero do Pedido", "nunique"), Itens=("Qtde", "sum"))
+            .reset_index()
+            .sort_values("Pedidos", ascending=False)
+            .head(6)
+        )
+        render_ranking("Top fornecedores do mes", ranking_fornecedor, "Subgrupo", "ped.")
+
+    with aba_grupo:
+        ranking_grupo = (
+            df_mes.groupby("Grupo")
+            .agg(Pedidos=("Numero do Pedido", "nunique"), Itens=("Qtde", "sum"))
+            .reset_index()
+            .sort_values("Pedidos", ascending=False)
+            .head(6)
+        )
+        render_ranking("Distribuicao por grupo", ranking_grupo, "Grupo", "ped.")
+
+    with aba_tipo:
+        ranking_tipo = (
+            df_mes.groupby("Tipo")
+            .agg(Pedidos=("Numero do Pedido", "nunique"), Itens=("Qtde", "sum"))
+            .reset_index()
+            .sort_values("Pedidos", ascending=False)
+            .head(6)
+        )
+        render_ranking("Distribuicao por tipo", ranking_tipo, "Tipo", "ped.")
+
+if data_label != "Visao do mes":
+    data_detalhe = pd.to_datetime(data_label, dayfirst=True).date()
+    df_detalhe = df_mes[df_mes["Data Recebimento"] == data_detalhe].copy()
+    titulo = f"Recebimentos detalhados de {data_label}"
+else:
+    df_detalhe = df_mes.copy()
+    titulo = "Recebimentos detalhados do mes"
+
+colunas = [
+    "Numero do Pedido",
+    "Data Entrega",
+    "Subgrupo",
+    "Grupo",
+    "Codigo",
+    "Descricao",
+    "Qtde",
+]
+colunas = [col for col in colunas if col in df_detalhe.columns]
+df_detalhe = df_detalhe[colunas].copy()
+
+for coluna_texto in ["Numero do Pedido", "Codigo"]:
+    if coluna_texto in df_detalhe.columns:
+        df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype(str).str.strip()
+
+if "Data Entrega" in df_detalhe.columns:
+    df_detalhe["Data Entrega"] = df_detalhe["Data Entrega"].dt.strftime("%d/%m/%Y")
+
+df_detalhe = df_detalhe.rename(
+    columns={
+        "Numero do Pedido": "Pedido",
+        "Subgrupo": "Fornecedor",
+        "Descricao": "Descricao",
+    }
+)
+
+with st.expander(titulo, expanded=False):
+    st.dataframe(
+        df_detalhe,
+        use_container_width=True,
+        hide_index=True,
+        height=360,
+        column_config={
+            "Pedido": st.column_config.TextColumn("Pedido"),
+            "Codigo": st.column_config.TextColumn("Codigo"),
+        },
+    )
