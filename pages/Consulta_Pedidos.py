@@ -19,33 +19,57 @@ st.set_page_config(
 st.markdown("""
 <style>
 
+<<<<<<< HEAD
 /* Mantem a seta lateral e deixa a barra superior transparente */
 header,
 header[data-testid="stHeader"] {
     visibility: visible !important;
+=======
+/* Mantem a seta lateral sem mostrar a barra superior */
+header,
+header[data-testid="stHeader"] {
+    visibility: visible !important;
+    height: 0rem !important;
+    min-height: 0rem !important;
+>>>>>>> 675696a9834dd229efdc021a8a113bcd036efdee
     background: transparent !important;
     box-shadow: none !important;
     border: 0 !important;
 }
 
+<<<<<<< HEAD
 [data-testid="stStatusWidget"] {
     display: none !important;
+=======
+[data-testid="collapsedControl"],
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="stSidebarCollapseButton"] {
+    visibility: visible !important;
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: fixed !important;
+    top: 0.55rem !important;
+    left: 0.55rem !important;
+    z-index: 999999 !important;
+>>>>>>> 675696a9834dd229efdc021a8a113bcd036efdee
 }
 
-/* Remove decoração superior */
+[data-testid="stHeaderActionElements"],
+[data-testid="stStatusWidget"],
+[data-testid="stToolbar"],
 [data-testid="stDecoration"] {
     display: none !important;
 }
 
-/* Remove menu hamburguer */
 #MainMenu {
     visibility: hidden;
 }
 
-/* Remove rodapé */
 footer {
     visibility: hidden;
 }
+<<<<<<< HEAD
 
 /* Reduz espaço superior */
 .block-container,
@@ -71,6 +95,8 @@ with st.sidebar:
 # TÍTULO
 # ==================================================
 
+=======
+>>>>>>> 675696a9834dd229efdc021a8a113bcd036efdee
 st.markdown("## Consulta de Pedidos")
 
 # ==================================================
