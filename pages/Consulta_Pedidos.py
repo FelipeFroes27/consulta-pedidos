@@ -20,7 +20,7 @@ st.markdown("""
 
 /* Remove barra superior */
 header {
-    visibility: hidden;
+    background: transparent;
 }
 
 /* Remove menu deploy */
