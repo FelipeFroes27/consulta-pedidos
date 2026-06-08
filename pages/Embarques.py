@@ -1441,13 +1441,14 @@ def ajustar_pizza(fig):
         textinfo="value",
         texttemplate="%{value}",
         textposition="inside",
-        marker=dict(line=dict(color="#ffffff", width=2)),
-        domain=dict(x=[0.03, 0.64], y=[0.08, 0.98]),
+        textfont=dict(color="#000000", size=12),
+        marker=dict(line=dict(color="#000000", width=2)),
+        domain=dict(x=[0.08, 0.92], y=[0.28, 0.98]),
     )
     return fig
 
 
-def encurtar_legenda(texto, limite=26):
+def encurtar_legenda(texto, limite=22):
     texto = str(texto)
     return texto if len(texto) <= limite else texto[: limite - 3] + "..."
 
@@ -1467,20 +1468,24 @@ def estilizar_grafico(fig, altura=282, legenda=False, metrica="Valor"):
 
     fig.update_layout(
         height=altura,
-        margin=dict(l=6, r=6, t=4, b=8),
+        margin=dict(l=8, r=8, t=4, b=92),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
         font=dict(family="Arial", size=11, color="#475467"),
         showlegend=legenda,
         legend=dict(
-            orientation="v",
-            yanchor="middle",
-            y=0.5,
-            xanchor="left",
-            x=0.68,
+            orientation="h",
+            yanchor="bottom",
+            y=-0.04,
+            xanchor="center",
+            x=0.5,
             font=dict(size=10, color="#101828"),
-            itemwidth=118,
+            itemwidth=88,
             traceorder="normal",
+            bgcolor="#ffffff",
+            bordercolor="#000000",
+            borderwidth=0,
+            itemsizing="constant",
         ),
     )
     fig.update_xaxes(showgrid=False, linecolor="#e5eaf2", tickfont=dict(color="#667085"))
