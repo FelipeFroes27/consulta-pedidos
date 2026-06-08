@@ -1,140 +1,88 @@
-import streamlit.components.v1 as components
+import time
+
+import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
 
-def ativar_modo_exibicao():
-    components.html(
+INATIVIDADE_SEGUNDOS = 2 * 60
+TROCA_TELA_SEGUNDOS = 60
+REFRESH_MS = 5 * 1000
+
+
+def ativar_modo_exibicao(pagina_atual):
+    contador = st_autorefresh(
+        interval=REFRESH_MS,
+        key="modo_exibicao_refresh",
+    )
+    agora = time.time()
+
+    pagina_anterior = st.session_state.get("modo_exibicao_pagina_atual")
+    navegacao_automatica = st.session_state.get("modo_exibicao_navegando", False)
+    st.session_state.modo_exibicao_pagina_atual = pagina_atual
+
+    if pagina_anterior is not None and pagina_anterior != pagina_atual:
+        if navegacao_automatica:
+            st.session_state.modo_exibicao_navegando = False
+        else:
+            _registrar_atividade(agora)
+
+    ultimo_contador = st.session_state.get("modo_exibicao_contador")
+    st.session_state.modo_exibicao_contador = contador
+
+    foi_refresh_automatico = ultimo_contador is not None and contador != ultimo_contador
+
+    if "modo_exibicao_ultima_atividade" not in st.session_state:
+        st.session_state.modo_exibicao_ultima_atividade = agora
+
+    if not foi_refresh_automatico:
+        _registrar_atividade(agora)
+
+    tempo_parado = agora - st.session_state.modo_exibicao_ultima_atividade
+
+    if tempo_parado < INATIVIDADE_SEGUNDOS:
+        return
+
+    st.session_state.modo_exibicao_ativo = True
+    _ocultar_sidebar()
+
+    proxima_troca = st.session_state.get("modo_exibicao_proxima_troca")
+    if proxima_troca is not None and agora < proxima_troca:
+        return
+
+    st.session_state.modo_exibicao_proxima_troca = agora + TROCA_TELA_SEGUNDOS
+    st.session_state.modo_exibicao_navegando = True
+    st.switch_page(_proxima_pagina(pagina_atual))
+
+
+def _proxima_pagina(pagina_atual):
+    if pagina_atual == "recebimentos":
+        return "pages/Embarques.py"
+
+    return "pages/Cronograma.py"
+
+
+def _registrar_atividade(agora):
+    st.session_state.modo_exibicao_ultima_atividade = agora
+    st.session_state.modo_exibicao_ativo = False
+    st.session_state.modo_exibicao_navegando = False
+    st.session_state.modo_exibicao_proxima_troca = None
+
+
+def _ocultar_sidebar():
+    st.markdown(
         """
-        <script>
-        (() => {
-            const INATIVIDADE_MS = 2 * 60 * 1000;
-            const TROCA_TELA_MS = 60 * 1000;
-            const TELAS = ["/Cronograma", "/Embarques"];
-            const storage = window.parent.localStorage;
-            const parentWindow = window.parent;
-            const parentDocument = parentWindow.document;
+        <style>
+        [data-testid="stSidebar"],
+        [data-testid="stSidebarCollapsedControl"],
+        [data-testid="stSidebarCollapseButton"],
+        [data-testid="collapsedControl"] {
+            display: none !important;
+        }
 
-            const agora = () => Date.now();
-            const caminhoAtual = () => parentWindow.location.pathname.replace(/\\/$/, "") || "/";
-
-            const sidebarEstaAberta = () => {
-                const sidebar = parentDocument.querySelector('[data-testid="stSidebar"]');
-                if (!sidebar) {
-                    return false;
-                }
-
-                const largura = sidebar.getBoundingClientRect().width;
-                return largura > 120;
-            };
-
-            const recolherSidebar = () => {
-                if (!sidebarEstaAberta()) {
-                    return;
-                }
-
-                const botao = parentDocument.querySelector(
-                    '[data-testid="stSidebarCollapseButton"], [data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"]'
-                );
-
-                if (botao) {
-                    botao.click();
-                }
-            };
-
-            const registrarAtividade = () => {
-                if (storage.getItem("sistemaModoExibicaoNavegando") === "1") {
-                    return;
-                }
-
-                storage.setItem("sistemaUltimoClique", String(agora()));
-                storage.removeItem("sistemaModoExibicaoAtivo");
-                storage.removeItem("sistemaModoExibicaoIndice");
-                storage.removeItem("sistemaModoExibicaoProximaTroca");
-            };
-
-            const navegar = (destino) => {
-                if (caminhoAtual() === destino) {
-                    return;
-                }
-
-                storage.setItem("sistemaModoExibicaoNavegando", "1");
-
-                const links = Array.from(parentDocument.querySelectorAll("a[href]"));
-                const linkDestino = links.find((link) => {
-                    const href = new URL(link.getAttribute("href"), parentWindow.location.origin);
-                    return href.pathname.replace(/\\/$/, "") === destino;
-                });
-
-                if (linkDestino) {
-                    linkDestino.click();
-                } else {
-                    parentWindow.location.assign(new URL(destino, parentWindow.location.origin).toString());
-                }
-
-                setTimeout(() => {
-                    storage.removeItem("sistemaModoExibicaoNavegando");
-                }, 1200);
-            };
-
-            const verificar = () => {
-                let ultimoClique = Number(storage.getItem("sistemaUltimoClique") || agora());
-                if (!storage.getItem("sistemaUltimoClique")) {
-                    storage.setItem("sistemaUltimoClique", String(ultimoClique));
-                }
-
-                if (!Number.isFinite(ultimoClique) || ultimoClique > agora()) {
-                    ultimoClique = agora();
-                    storage.setItem("sistemaUltimoClique", String(ultimoClique));
-                    storage.removeItem("sistemaModoExibicaoAtivo");
-                    storage.removeItem("sistemaModoExibicaoIndice");
-                    storage.removeItem("sistemaModoExibicaoProximaTroca");
-                }
-
-                if (agora() - ultimoClique < INATIVIDADE_MS) {
-                    return;
-                }
-
-                const ativo = storage.getItem("sistemaModoExibicaoAtivo") === "1";
-                const telaAtual = caminhoAtual();
-
-                if (!ativo) {
-                    const indiceAtual = TELAS.indexOf(telaAtual);
-                    const proximoIndice = indiceAtual >= 0 ? (indiceAtual + 1) % TELAS.length : 0;
-
-                    storage.setItem("sistemaModoExibicaoAtivo", "1");
-                    storage.setItem("sistemaModoExibicaoIndice", String(proximoIndice));
-                    storage.setItem("sistemaModoExibicaoProximaTroca", String(agora() + TROCA_TELA_MS));
-                    recolherSidebar();
-                    navegar(TELAS[proximoIndice]);
-                    return;
-                }
-
-                let proximaTroca = Number(storage.getItem("sistemaModoExibicaoProximaTroca") || 0);
-                if (!Number.isFinite(proximaTroca) || proximaTroca > agora() + TROCA_TELA_MS) {
-                    proximaTroca = 0;
-                }
-
-                if (agora() < proximaTroca) {
-                    return;
-                }
-
-                const indiceAtual = Number(storage.getItem("sistemaModoExibicaoIndice") || 0);
-                const proximoIndice = (indiceAtual + 1) % TELAS.length;
-
-                storage.setItem("sistemaModoExibicaoIndice", String(proximoIndice));
-                storage.setItem("sistemaModoExibicaoProximaTroca", String(agora() + TROCA_TELA_MS));
-                recolherSidebar();
-                navegar(TELAS[proximoIndice]);
-            };
-
-            ["click", "keydown", "touchstart"].forEach((evento) => {
-                parentDocument.addEventListener(evento, registrarAtividade, true);
-            });
-
-            verificar();
-            setInterval(verificar, 1000);
-        })();
-        </script>
+        [data-testid="stAppViewContainer"] > .main {
+            margin-left: 0 !important;
+        }
+        </style>
         """,
-        height=0,
-        width=0,
+        unsafe_allow_html=True,
     )

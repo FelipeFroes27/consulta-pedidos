@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-ativar_modo_exibicao()
+ativar_modo_exibicao("inicio")
 
 st.markdown(
     """

@@ -11,7 +11,7 @@ from utils.sheets import carregar_dados
 
 
 st.set_page_config(page_title="Recebimentos", layout="wide", initial_sidebar_state="expanded")
-ativar_modo_exibicao()
+ativar_modo_exibicao("recebimentos")
 
 
 MESES_PT = {

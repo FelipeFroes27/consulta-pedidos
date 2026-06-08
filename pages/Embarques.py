@@ -11,7 +11,7 @@ from utils.sheets import carregar_embarques
 
 
 st.set_page_config(page_title="Embarques", layout="wide", initial_sidebar_state="expanded")
-ativar_modo_exibicao()
+ativar_modo_exibicao("embarques")
 
 
 MESES_PT = {
