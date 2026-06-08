@@ -16,7 +16,35 @@ def ativar_modo_exibicao():
             const agora = () => Date.now();
             const caminhoAtual = () => parentWindow.location.pathname.replace(/\\/$/, "") || "/";
 
+            const sidebarEstaAberta = () => {
+                const sidebar = parentDocument.querySelector('[data-testid="stSidebar"]');
+                if (!sidebar) {
+                    return false;
+                }
+
+                const largura = sidebar.getBoundingClientRect().width;
+                return largura > 120;
+            };
+
+            const recolherSidebar = () => {
+                if (!sidebarEstaAberta()) {
+                    return;
+                }
+
+                const botao = parentDocument.querySelector(
+                    '[data-testid="stSidebarCollapseButton"], [data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"]'
+                );
+
+                if (botao) {
+                    botao.click();
+                }
+            };
+
             const registrarAtividade = () => {
+                if (storage.getItem("sistemaModoExibicaoNavegando") === "1") {
+                    return;
+                }
+
                 storage.setItem("sistemaUltimoClique", String(agora()));
                 storage.removeItem("sistemaModoExibicaoAtivo");
                 storage.removeItem("sistemaModoExibicaoIndice");
@@ -28,7 +56,23 @@ def ativar_modo_exibicao():
                     return;
                 }
 
-                parentWindow.location.assign(new URL(destino, parentWindow.location.origin).toString());
+                storage.setItem("sistemaModoExibicaoNavegando", "1");
+
+                const links = Array.from(parentDocument.querySelectorAll("a[href]"));
+                const linkDestino = links.find((link) => {
+                    const href = new URL(link.getAttribute("href"), parentWindow.location.origin);
+                    return href.pathname.replace(/\\/$/, "") === destino;
+                });
+
+                if (linkDestino) {
+                    linkDestino.click();
+                } else {
+                    parentWindow.location.assign(new URL(destino, parentWindow.location.origin).toString());
+                }
+
+                setTimeout(() => {
+                    storage.removeItem("sistemaModoExibicaoNavegando");
+                }, 1200);
             };
 
             const verificar = () => {
@@ -59,6 +103,7 @@ def ativar_modo_exibicao():
                     storage.setItem("sistemaModoExibicaoAtivo", "1");
                     storage.setItem("sistemaModoExibicaoIndice", String(proximoIndice));
                     storage.setItem("sistemaModoExibicaoProximaTroca", String(agora() + TROCA_TELA_MS));
+                    recolherSidebar();
                     navegar(TELAS[proximoIndice]);
                     return;
                 }
@@ -77,6 +122,7 @@ def ativar_modo_exibicao():
 
                 storage.setItem("sistemaModoExibicaoIndice", String(proximoIndice));
                 storage.setItem("sistemaModoExibicaoProximaTroca", String(agora() + TROCA_TELA_MS));
+                recolherSidebar();
                 navegar(TELAS[proximoIndice]);
             };
 
