@@ -1068,8 +1068,33 @@ def texto(serie):
     return serie.fillna("").astype(str).str.strip()
 
 
-def chave_texto(serie):
-    return texto(serie).str.upper().str.replace(r"\s+", " ", regex=True)
+def normalizar_nome_coluna(nome):
+    return (
+        str(nome)
+        .strip()
+        .lower()
+        .replace("á", "a")
+        .replace("à", "a")
+        .replace("ã", "a")
+        .replace("â", "a")
+        .replace("é", "e")
+        .replace("ê", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ô", "o")
+        .replace("õ", "o")
+        .replace("ú", "u")
+        .replace("ç", "c")
+    )
+
+
+def encontrar_coluna(df, nomes):
+    mapa = {normalizar_nome_coluna(coluna): coluna for coluna in df.columns}
+    for nome in nomes:
+        coluna = mapa.get(normalizar_nome_coluna(nome))
+        if coluna is not None:
+            return coluna
+    return None
 
 
 def preparar_dados(df_original):
@@ -1081,6 +1106,21 @@ def preparar_dados(df_original):
         st.error("A aba Embarques precisa conter estas colunas: " + ", ".join(faltantes))
         st.stop()
 
+    coluna_codigo = encontrar_coluna(df, ["Codigo", "Código", "Cod Item", "Código Item"])
+    if coluna_codigo and coluna_codigo != "Codigo":
+        df = df.rename(columns={coluna_codigo: "Codigo"})
+
+    coluna_descricao = encontrar_coluna(df, ["Descrição", "Descricao", "Produto", "Item"])
+    if coluna_descricao and coluna_descricao != "Descrição":
+        df = df.rename(columns={coluna_descricao: "Descrição"})
+
+    df["Numero"] = texto(df["Numero"]).replace("", "Não informado")
+    df["Quantidade"] = pd.to_numeric(df["Quantidade"], errors="coerce").fillna(0)
+
+    for coluna in ["Codigo", "Descrição"]:
+        if coluna in df.columns:
+            df[coluna] = texto(df[coluna])
+
     df["Data"] = pd.to_datetime(df["Data"], errors="coerce", dayfirst=True)
     df = df[df["Data"].notna()].copy()
 
@@ -1088,30 +1128,12 @@ def preparar_dados(df_original):
         return df
 
     df["Numero do embarque"] = texto(df["Numero do embarque"]).replace("", "Não informado")
-    df["Numero"] = texto(df["Numero"]).replace("", "Não informado")
     df["Nome do transportadora"] = texto(df["Nome do transportadora"]).replace("", "Não informado")
     df["Data Embarque"] = df["Data"].dt.date
-
-    df["Quantidade"] = pd.to_numeric(df["Quantidade"], errors="coerce").fillna(0)
 
     for coluna in ["Num box", "Placa", "Codigo", "Descrição", "Endereço nota", "Status"]:
         if coluna in df.columns:
             df[coluna] = texto(df[coluna])
-
-    colunas_deduplicacao = ["Numero", "Codigo", "Descrição", "Quantidade"]
-    if all(coluna in df.columns for coluna in colunas_deduplicacao):
-        df["_dedup_nf"] = chave_texto(df["Numero"])
-        df["_dedup_codigo"] = chave_texto(df["Codigo"])
-        df["_dedup_descricao"] = chave_texto(df["Descrição"])
-        df["_dedup_quantidade"] = pd.to_numeric(df["Quantidade"], errors="coerce").fillna(0).round(6)
-        df = (
-            df.drop_duplicates(
-                subset=["_dedup_nf", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"],
-                keep="first",
-            )
-            .drop(columns=["_dedup_nf", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"])
-            .copy()
-        )
 
     return df
 
