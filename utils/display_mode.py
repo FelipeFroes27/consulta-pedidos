@@ -73,16 +73,24 @@ def _ocultar_sidebar():
         """
         <style>
         [data-testid="stSidebar"] {
-            transform: translateX(-100%) !important;
-            min-width: 0 !important;
-            width: 0 !important;
+            transform: none !important;
+            min-width: 3.25rem !important;
+            width: 3.25rem !important;
+            max-width: 3.25rem !important;
+            overflow: visible !important;
+            border-right: 1px solid #000000 !important;
+            background: #ffffff !important;
         }
 
-        [data-testid="stSidebarCollapseButton"],
-        [data-testid="collapsedControl"] {
+        [data-testid="stSidebar"] [data-testid="stSidebarUserContent"],
+        [data-testid="stSidebar"] [data-testid="stSidebarNav"],
+        [data-testid="stSidebar"] .sidebar-logo,
+        [data-testid="stSidebar"] a {
             display: none !important;
         }
 
+        [data-testid="stSidebarCollapseButton"],
+        [data-testid="collapsedControl"],
         [data-testid="stSidebarCollapsedControl"] {
             display: flex !important;
             visibility: visible !important;
@@ -92,6 +100,10 @@ def _ocultar_sidebar():
             top: 0.55rem !important;
             left: 0.55rem !important;
             z-index: 999999 !important;
+            color: #000000 !important;
+            background: #ffffff !important;
+            border: 1px solid #000000 !important;
+            border-radius: 8px !important;
         }
 
         [data-testid="stAppViewContainer"] > .main {
