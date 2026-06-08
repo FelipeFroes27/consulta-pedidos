@@ -873,10 +873,12 @@ st.markdown(
         border: 2px solid #000000 !important;
     }
 
-    .next-card.danger {box-shadow: inset 5px 0 0 #ef4444 !important;}
-    .next-card.warning {box-shadow: inset 5px 0 0 #f59e0b !important;}
-    .next-card.soon {box-shadow: inset 5px 0 0 #3b82f6 !important;}
-    .next-card.safe {box-shadow: inset 5px 0 0 #22c55e !important;}
+    .next-card.danger,
+    .next-card.warning,
+    .next-card.soon,
+    .next-card.safe {
+        box-shadow: none !important;
+    }
 
     div[data-baseweb="select"] > div,
     div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
@@ -1001,6 +1003,71 @@ st.markdown(
         border-color: #000000 !important;
         color: #777777 !important;
         opacity: .65 !important;
+    }
+
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.next-panel-title) {
+        border: 2px solid #000000 !important;
+        border-radius: 12px !important;
+        padding: 16px !important;
+        background: #ffffff !important;
+    }
+
+    .next-panel-title {
+        margin: 0 0 14px 0 !important;
+        font-size: 16px !important;
+    }
+
+    .next-card,
+    .next-card.danger,
+    .next-card.warning,
+    .next-card.soon,
+    .next-card.safe,
+    .next-card.selected {
+        grid-template-columns: 36px minmax(0, 1fr) 48px 56px !important;
+        min-height: 82px !important;
+        padding: 11px 12px !important;
+        margin: 0 0 10px 0 !important;
+        border: 2px solid #000000 !important;
+        border-radius: 10px !important;
+        background: #ffffff !important;
+        outline: none !important;
+        box-shadow: none !important;
+    }
+
+    .next-card.selected {
+        box-shadow: inset 0 0 0 2px #000000 !important;
+    }
+
+    .next-card.danger .next-icon {background: #ef4444 !important;}
+    .next-card.warning .next-icon {background: #f59e0b !important;}
+    .next-card.soon .next-icon {background: #3b82f6 !important;}
+    .next-card.safe .next-icon {background: #22c55e !important;}
+
+    .next-icon {
+        width: 30px !important;
+        height: 30px !important;
+        border: 2px solid #000000 !important;
+        color: #ffffff !important;
+        font-size: 13px !important;
+    }
+
+    .next-when {
+        font-size: 13px !important;
+        line-height: 1.15 !important;
+    }
+
+    .next-date,
+    .next-label {
+        font-size: 10px !important;
+    }
+
+    .next-extra {
+        max-width: 135px !important;
+        font-size: 10px !important;
+    }
+
+    .next-number {
+        font-size: 14px !important;
     }
     </style>
     """,
