@@ -18,7 +18,9 @@ def ativar_modo_exibicao():
 
             const registrarAtividade = () => {
                 storage.setItem("sistemaUltimoClique", String(agora()));
-                storage.removeItem("sistemaModoExibicaoInicio");
+                storage.removeItem("sistemaModoExibicaoAtivo");
+                storage.removeItem("sistemaModoExibicaoIndice");
+                storage.removeItem("sistemaModoExibicaoProximaTroca");
             };
 
             const navegar = (destino) => {
@@ -39,17 +41,34 @@ def ativar_modo_exibicao():
                     return;
                 }
 
-                let inicioModo = Number(storage.getItem("sistemaModoExibicaoInicio"));
-                if (!inicioModo) {
-                    inicioModo = agora();
-                    storage.setItem("sistemaModoExibicaoInicio", String(inicioModo));
+                const ativo = storage.getItem("sistemaModoExibicaoAtivo") === "1";
+                const telaAtual = caminhoAtual();
+
+                if (!ativo) {
+                    const indiceAtual = TELAS.indexOf(telaAtual);
+                    const proximoIndice = indiceAtual >= 0 ? (indiceAtual + 1) % TELAS.length : 0;
+
+                    storage.setItem("sistemaModoExibicaoAtivo", "1");
+                    storage.setItem("sistemaModoExibicaoIndice", String(proximoIndice));
+                    storage.setItem("sistemaModoExibicaoProximaTroca", String(agora() + TROCA_TELA_MS));
+                    navegar(TELAS[proximoIndice]);
+                    return;
                 }
 
-                const indiceTela = Math.floor((agora() - inicioModo) / TROCA_TELA_MS) % TELAS.length;
-                navegar(TELAS[indiceTela]);
+                const proximaTroca = Number(storage.getItem("sistemaModoExibicaoProximaTroca") || 0);
+                if (agora() < proximaTroca) {
+                    return;
+                }
+
+                const indiceAtual = Number(storage.getItem("sistemaModoExibicaoIndice") || 0);
+                const proximoIndice = (indiceAtual + 1) % TELAS.length;
+
+                storage.setItem("sistemaModoExibicaoIndice", String(proximoIndice));
+                storage.setItem("sistemaModoExibicaoProximaTroca", String(agora() + TROCA_TELA_MS));
+                navegar(TELAS[proximoIndice]);
             };
 
-            ["click", "keydown", "touchstart", "mousemove"].forEach((evento) => {
+            ["click", "keydown", "touchstart"].forEach((evento) => {
                 parentDocument.addEventListener(evento, registrarAtividade, true);
             });
 
