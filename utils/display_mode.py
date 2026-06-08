@@ -28,13 +28,21 @@ def ativar_modo_exibicao():
                     return;
                 }
 
-                parentWindow.location.href = destino;
+                parentWindow.location.assign(new URL(destino, parentWindow.location.origin).toString());
             };
 
             const verificar = () => {
-                const ultimoClique = Number(storage.getItem("sistemaUltimoClique") || agora());
+                let ultimoClique = Number(storage.getItem("sistemaUltimoClique") || agora());
                 if (!storage.getItem("sistemaUltimoClique")) {
                     storage.setItem("sistemaUltimoClique", String(ultimoClique));
+                }
+
+                if (!Number.isFinite(ultimoClique) || ultimoClique > agora()) {
+                    ultimoClique = agora();
+                    storage.setItem("sistemaUltimoClique", String(ultimoClique));
+                    storage.removeItem("sistemaModoExibicaoAtivo");
+                    storage.removeItem("sistemaModoExibicaoIndice");
+                    storage.removeItem("sistemaModoExibicaoProximaTroca");
                 }
 
                 if (agora() - ultimoClique < INATIVIDADE_MS) {
@@ -55,7 +63,11 @@ def ativar_modo_exibicao():
                     return;
                 }
 
-                const proximaTroca = Number(storage.getItem("sistemaModoExibicaoProximaTroca") || 0);
+                let proximaTroca = Number(storage.getItem("sistemaModoExibicaoProximaTroca") || 0);
+                if (!Number.isFinite(proximaTroca) || proximaTroca > agora() + TROCA_TELA_MS) {
+                    proximaTroca = 0;
+                }
+
                 if (agora() < proximaTroca) {
                     return;
                 }
