@@ -3,6 +3,7 @@
 import streamlit as st
 import pandas as pd
 import gspread
+import unicodedata
 from google.oauth2.service_account import Credentials
 
 
@@ -50,23 +51,8 @@ def _texto_chave(serie):
 
 
 def _normalizar_nome_coluna(nome):
-    return (
-        str(nome)
-        .strip()
-        .lower()
-        .replace("á", "a")
-        .replace("à", "a")
-        .replace("ã", "a")
-        .replace("â", "a")
-        .replace("é", "e")
-        .replace("ê", "e")
-        .replace("í", "i")
-        .replace("ó", "o")
-        .replace("ô", "o")
-        .replace("õ", "o")
-        .replace("ú", "u")
-        .replace("ç", "c")
-    )
+    texto = unicodedata.normalize("NFKD", str(nome).strip().lower())
+    return "".join(char for char in texto if not unicodedata.combining(char))
 
 
 def _encontrar_coluna(df, nomes):
@@ -80,20 +66,23 @@ def _encontrar_coluna(df, nomes):
 
 def _remover_duplicados_embarques(df):
     coluna_numero = _encontrar_coluna(df, ["Numero", "NF", "Nota Fiscal"])
-    coluna_codigo = _encontrar_coluna(df, ["Código", "Codigo"])
-    coluna_descricao = _encontrar_coluna(df, ["Descrição", "Descricao"])
+    coluna_codigo = _encontrar_coluna(df, ["Código", "Codigo", "Cdigo", "C?digo"])
+    coluna_descricao = _encontrar_coluna(df, ["Descrição", "Descricao", "Descrio", "Descri??o"])
     coluna_quantidade = _encontrar_coluna(df, ["Quantidade", "Qtde", "Qtd"])
+
+    st.session_state["embarques_duplicados_removidos"] = 0
 
     if not all([coluna_numero, coluna_codigo, coluna_descricao, coluna_quantidade]):
         return df
 
     df = df.copy()
+    linhas_antes = len(df)
     df["_dedup_numero"] = _texto_chave(df[coluna_numero])
     df["_dedup_codigo"] = _texto_chave(df[coluna_codigo])
     df["_dedup_descricao"] = _texto_chave(df[coluna_descricao])
     df["_dedup_quantidade"] = pd.to_numeric(df[coluna_quantidade], errors="coerce").fillna(0).round(6)
 
-    return (
+    df = (
         df.drop_duplicates(
             subset=["_dedup_numero", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"],
             keep="first",
@@ -101,6 +90,8 @@ def _remover_duplicados_embarques(df):
         .drop(columns=["_dedup_numero", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"])
         .copy()
     )
+    st.session_state["embarques_duplicados_removidos"] = linhas_antes - len(df)
+    return df
 
 
 @st.cache_data(ttl=300)

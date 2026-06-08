@@ -1,4 +1,5 @@
 ﻿from html import escape
+import unicodedata
 
 import pandas as pd
 import base64
@@ -1069,23 +1070,8 @@ def texto(serie):
 
 
 def normalizar_nome_coluna(nome):
-    return (
-        str(nome)
-        .strip()
-        .lower()
-        .replace("á", "a")
-        .replace("à", "a")
-        .replace("ã", "a")
-        .replace("â", "a")
-        .replace("é", "e")
-        .replace("ê", "e")
-        .replace("í", "i")
-        .replace("ó", "o")
-        .replace("ô", "o")
-        .replace("õ", "o")
-        .replace("ú", "u")
-        .replace("ç", "c")
-    )
+    texto = unicodedata.normalize("NFKD", str(nome).strip().lower())
+    return "".join(char for char in texto if not unicodedata.combining(char))
 
 
 def encontrar_coluna(df, nomes):
@@ -1447,11 +1433,17 @@ def render_analise_entrega(df, data_alerta):
             )
             fig_transportadora = ajustar_pizza(fig_transportadora)
             fig_transportadora.update_traces(hovertemplate="<b>%{label}</b><br>Notas fiscais: %{value}<extra></extra>")
-            st.plotly_chart(
+            evento_transportadora = st.plotly_chart(
                 estilizar_grafico(fig_transportadora, altura=430, legenda=True, metrica="Notas fiscais"),
                 use_container_width=True,
                 config={"displayModeBar": False},
+                key="grafico_notas_transportadora",
+                on_select="rerun",
+                selection_mode="points",
             )
+            transportadora_selecionada = obter_label_selecionado(evento_transportadora)
+            if transportadora_selecionada:
+                st.session_state.embarque_transportadora_filtro = transportadora_selecionada
 
     with volumes_col:
         with st.container(border=True):
@@ -1471,11 +1463,17 @@ def render_analise_entrega(df, data_alerta):
             )
             fig_volume = ajustar_pizza(fig_volume)
             fig_volume.update_traces(hovertemplate="<b>%{label}</b><br>Volumes: %{value}<extra></extra>")
-            st.plotly_chart(
+            evento_volume = st.plotly_chart(
                 estilizar_grafico(fig_volume, altura=430, legenda=True, metrica="Volumes"),
                 use_container_width=True,
                 config={"displayModeBar": False},
+                key="grafico_volumes_transportadora",
+                on_select="rerun",
+                selection_mode="points",
             )
+            transportadora_selecionada = obter_label_selecionado(evento_volume)
+            if transportadora_selecionada:
+                st.session_state.embarque_transportadora_filtro = transportadora_selecionada
 
 
 def ajustar_pizza(fig):
@@ -1488,6 +1486,56 @@ def ajustar_pizza(fig):
         domain=dict(x=[0.08, 0.92], y=[0.28, 0.98]),
     )
     return fig
+
+
+def obter_label_selecionado(evento):
+    if not evento:
+        return None
+
+    selecao = getattr(evento, "selection", None)
+    if selecao is None and isinstance(evento, dict):
+        selecao = evento.get("selection")
+
+    pontos = getattr(selecao, "points", None)
+    if pontos is None and isinstance(selecao, dict):
+        pontos = selecao.get("points")
+
+    if not pontos:
+        return None
+
+    ponto = pontos[0]
+    if not isinstance(ponto, dict):
+        return None
+
+    customdata = ponto.get("customdata")
+    if isinstance(customdata, (list, tuple)) and customdata:
+        return str(customdata[0])
+    if customdata:
+        return str(customdata)
+
+    label = ponto.get("label")
+    if label:
+        return str(label)
+
+    return None
+
+
+def resolver_transportadora(df, valor):
+    if not valor or "Nome do transportadora" not in df.columns:
+        return None
+
+    valor = str(valor).strip()
+    transportadoras = sorted(df["Nome do transportadora"].dropna().astype(str).unique())
+    if valor in transportadoras:
+        return valor
+
+    prefixo = valor.replace("...", "").strip()
+    if prefixo:
+        for transportadora in transportadoras:
+            if transportadora.startswith(prefixo):
+                return transportadora
+
+    return None
 
 
 def encurtar_legenda(texto, limite=22):
@@ -1630,6 +1678,14 @@ else:
     df_detalhe = df_mes.copy()
     titulo_detalhe = "Embarques detalhados"
 
+transportadora_filtro = resolver_transportadora(
+    df_detalhe,
+    st.session_state.get("embarque_transportadora_filtro"),
+)
+if transportadora_filtro:
+    df_detalhe = df_detalhe[df_detalhe["Nome do transportadora"] == transportadora_filtro].copy()
+    titulo_detalhe += f" - {transportadora_filtro}"
+
 col_rank, col_detalhe = st.columns([1, 1.65], gap="medium")
 
 with col_rank:
@@ -1666,6 +1722,11 @@ with col_rank:
         render_ranking("Volumes por transportadora", ranking_volume, "Nome do transportadora", "Volumes", "vol.")
 
 with col_detalhe:
+    if transportadora_filtro:
+        if st.button("Limpar transportadora", use_container_width=True):
+            st.session_state.embarque_transportadora_filtro = None
+            st.rerun()
+
     colunas = [
         "Data",
         "Numero do embarque",
