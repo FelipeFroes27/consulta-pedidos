@@ -745,22 +745,22 @@ st.markdown(
 
     .next-card.danger {
         background: #fff1f2;
-        border-color: #ef4444;
+        border-color: #000000;
     }
 
     .next-card.warning {
         background: #fffbeb;
-        border-color: #f59e0b;
+        border-color: #000000;
     }
 
     .next-card.soon {
         background: #eff6ff;
-        border-color: #3b82f6;
+        border-color: #000000;
     }
 
     .next-card.safe {
         background: #ecfdf5;
-        border-color: #22c55e;
+        border-color: #000000;
     }
 
     .next-card.selected {
@@ -864,6 +864,20 @@ st.markdown(
         margin-bottom: 0;
     }
 
+    .next-card,
+    .next-card.danger,
+    .next-card.warning,
+    .next-card.soon,
+    .next-card.safe,
+    .next-card.selected {
+        border: 2px solid #000000 !important;
+    }
+
+    .next-card.danger {box-shadow: inset 5px 0 0 #ef4444 !important;}
+    .next-card.warning {box-shadow: inset 5px 0 0 #f59e0b !important;}
+    .next-card.soon {box-shadow: inset 5px 0 0 #3b82f6 !important;}
+    .next-card.safe {box-shadow: inset 5px 0 0 #22c55e !important;}
+
     div[data-baseweb="select"] > div,
     div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
         border: 2px solid #000000 !important;
@@ -907,6 +921,86 @@ st.markdown(
     .kpi-icon {
         box-sizing: border-box !important;
         border: 2px solid #000000 !important;
+    }
+
+    .stButton > button,
+    button[kind],
+    div[data-testid="stBaseButton-secondary"] button,
+    div[data-testid="stBaseButton-primary"] button {
+        border: 2px solid #000000 !important;
+        border-radius: 7px !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+
+    div[data-testid="stVerticalBlockBorderWrapper"],
+    div[data-testid="stExpander"],
+    div[data-testid="stDataFrame"],
+    div[data-testid="stSelectbox"],
+    div[data-testid="stDateInput"],
+    div[data-testid="stTabs"] button,
+    div[data-testid="stTabs"] [role="tab"] {
+        border-color: #000000 !important;
+        box-shadow: none !important;
+        outline-color: #000000 !important;
+    }
+
+    div[data-testid="stExpander"] > details {
+        border: 0 !important;
+    }
+
+    div[data-testid="stExpander"] summary {
+        border-bottom: 2px solid #000000 !important;
+    }
+
+    div[data-testid="stDataFrame"] div,
+    div[data-testid="stDataFrame"] canvas {
+        outline-color: #000000 !important;
+    }
+
+    .tag,
+    .tag.green,
+    .tag.orange,
+    .tag.slate,
+    .progress-track {
+        border: 1px solid #000000 !important;
+    }
+
+    .analysis-select div[data-baseweb="select"] > div,
+    .next-panel-title + div[data-baseweb="select"] > div {
+        border: 2px solid #000000 !important;
+        background: #ffffff !important;
+    }
+
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.next-panel-title) {
+        border: 2px solid #000000 !important;
+        border-radius: 12px !important;
+        box-shadow: none !important;
+    }
+
+    .nav-button .stButton > button,
+    .refresh-button .stButton > button,
+    .stButton > button,
+    button[data-testid="baseButton-secondary"],
+    button[data-testid="baseButton-primary"],
+    button[kind="secondary"],
+    button[kind="primary"] {
+        border: 2px solid #000000 !important;
+        border-color: #000000 !important;
+        border-radius: 7px !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+
+    .nav-button .stButton > button:disabled,
+    .refresh-button .stButton > button:disabled,
+    .stButton > button:disabled {
+        border: 2px solid #000000 !important;
+        border-color: #000000 !important;
+        color: #777777 !important;
+        opacity: .65 !important;
     }
     </style>
     """,
