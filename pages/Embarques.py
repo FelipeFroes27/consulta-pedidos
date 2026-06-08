@@ -1048,43 +1048,6 @@ st.markdown(
         margin-bottom: 8px !important;
     }
 
-    .click-legend {
-        margin-top: -8px !important;
-        padding: 0 42px 4px 42px !important;
-    }
-
-    .click-legend div[data-testid="column"] {
-        display: flex;
-        align-items: center;
-    }
-
-    .legend-swatch {
-        width: 13px;
-        height: 13px;
-        border: 2px solid #000000;
-        border-radius: 2px;
-        margin-top: 8px;
-    }
-
-    .click-legend button {
-        min-height: 26px !important;
-        padding: 0 !important;
-        border: 0 !important;
-        background: transparent !important;
-        color: #101828 !important;
-        justify-content: flex-start !important;
-        font-size: 11px !important;
-        font-weight: 600 !important;
-        box-shadow: none !important;
-        text-align: left !important;
-    }
-
-    .click-legend button:hover {
-        color: #000000 !important;
-        text-decoration: underline !important;
-        background: transparent !important;
-        border: 0 !important;
-    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1471,21 +1434,10 @@ def render_analise_entrega(df, data_alerta):
             )
             fig_transportadora = ajustar_pizza(fig_transportadora)
             fig_transportadora.update_traces(hovertemplate="<b>%{label}</b><br>Notas fiscais: %{value}<extra></extra>")
-            evento_transportadora = st.plotly_chart(
-                estilizar_grafico(fig_transportadora, altura=360, legenda=False, metrica="Notas fiscais"),
+            st.plotly_chart(
+                estilizar_grafico(fig_transportadora, altura=430, legenda=True, metrica="Notas fiscais"),
                 use_container_width=True,
                 config={"displayModeBar": False},
-                key="grafico_notas_transportadora",
-                on_select="rerun",
-                selection_mode="points",
-            )
-            transportadora_selecionada = obter_label_selecionado(evento_transportadora)
-            if transportadora_selecionada:
-                st.session_state.embarque_transportadora_filtro = transportadora_selecionada
-            render_legenda_transportadora(
-                por_transportadora["Nome do transportadora"].tolist(),
-                PALETA_PLOTLY,
-                "legenda_notas_transportadora",
             )
 
     with volumes_col:
@@ -1506,21 +1458,10 @@ def render_analise_entrega(df, data_alerta):
             )
             fig_volume = ajustar_pizza(fig_volume)
             fig_volume.update_traces(hovertemplate="<b>%{label}</b><br>Volumes: %{value}<extra></extra>")
-            evento_volume = st.plotly_chart(
-                estilizar_grafico(fig_volume, altura=360, legenda=False, metrica="Volumes"),
+            st.plotly_chart(
+                estilizar_grafico(fig_volume, altura=430, legenda=True, metrica="Volumes"),
                 use_container_width=True,
                 config={"displayModeBar": False},
-                key="grafico_volumes_transportadora",
-                on_select="rerun",
-                selection_mode="points",
-            )
-            transportadora_selecionada = obter_label_selecionado(evento_volume)
-            if transportadora_selecionada:
-                st.session_state.embarque_transportadora_filtro = transportadora_selecionada
-            render_legenda_transportadora(
-                por_volume["Nome do transportadora"].tolist(),
-                ["#f97316", "#2563eb", "#10b981", "#8b5cf6", "#64748b"],
-                "legenda_volumes_transportadora",
             )
 
 
@@ -1534,78 +1475,6 @@ def ajustar_pizza(fig):
         domain=dict(x=[0.08, 0.92], y=[0.28, 0.98]),
     )
     return fig
-
-
-def obter_label_selecionado(evento):
-    if not evento:
-        return None
-
-    selecao = getattr(evento, "selection", None)
-    if selecao is None and isinstance(evento, dict):
-        selecao = evento.get("selection")
-
-    pontos = getattr(selecao, "points", None)
-    if pontos is None and isinstance(selecao, dict):
-        pontos = selecao.get("points")
-
-    if not pontos:
-        return None
-
-    ponto = pontos[0]
-    if not isinstance(ponto, dict):
-        return None
-
-    customdata = ponto.get("customdata")
-    if isinstance(customdata, (list, tuple)) and customdata:
-        return str(customdata[0])
-    if customdata:
-        return str(customdata)
-
-    label = ponto.get("label")
-    if label:
-        return str(label)
-
-    return None
-
-
-def resolver_transportadora(df, valor):
-    if not valor or "Nome do transportadora" not in df.columns:
-        return None
-
-    valor = str(valor).strip()
-    transportadoras = sorted(df["Nome do transportadora"].dropna().astype(str).unique())
-    if valor in transportadoras:
-        return valor
-
-    prefixo = valor.replace("...", "").strip()
-    if prefixo:
-        for transportadora in transportadoras:
-            if transportadora.startswith(prefixo):
-                return transportadora
-
-    return None
-
-
-def render_legenda_transportadora(transportadoras, cores, prefixo):
-    st.markdown('<div class="click-legend">', unsafe_allow_html=True)
-    for indice, transportadora in enumerate(transportadoras):
-        cor = cores[indice % len(cores)]
-        selecionada = st.session_state.get("embarque_transportadora_filtro") == transportadora
-        col_cor, col_nome = st.columns([0.12, 0.88])
-        with col_cor:
-            st.markdown(
-                f'<div class="legend-swatch" style="background:{cor};"></div>',
-                unsafe_allow_html=True,
-            )
-        with col_nome:
-            label = encurtar_legenda(transportadora, 34)
-            if st.button(label, key=f"{prefixo}_{indice}", use_container_width=True):
-                if selecionada:
-                    st.session_state.embarque_transportadora_filtro = None
-                else:
-                    st.session_state.embarque_transportadora_filtro = transportadora
-                st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def encurtar_legenda(texto, limite=22):
@@ -1748,14 +1617,6 @@ else:
     df_detalhe = df_mes.copy()
     titulo_detalhe = "Embarques detalhados"
 
-transportadora_filtro = resolver_transportadora(
-    df_detalhe,
-    st.session_state.get("embarque_transportadora_filtro"),
-)
-if transportadora_filtro:
-    df_detalhe = df_detalhe[df_detalhe["Nome do transportadora"] == transportadora_filtro].copy()
-    titulo_detalhe += f" - {transportadora_filtro}"
-
 col_rank, col_detalhe = st.columns([1, 1.65], gap="medium")
 
 with col_rank:
@@ -1792,10 +1653,18 @@ with col_rank:
         render_ranking("Volumes por transportadora", ranking_volume, "Nome do transportadora", "Volumes", "vol.")
 
 with col_detalhe:
-    if transportadora_filtro:
-        if st.button("Limpar transportadora", use_container_width=True):
-            st.session_state.embarque_transportadora_filtro = None
-            st.rerun()
+    transportadoras_detalhe = ["Todas"] + sorted(df_detalhe["Nome do transportadora"].dropna().astype(str).unique())
+    titulo_col, filtro_col = st.columns([1.45, 1])
+    with filtro_col:
+        transportadora_filtro = st.selectbox(
+            "Transportadora",
+            transportadoras_detalhe,
+            key="embarque_transportadora_select",
+        )
+
+    if transportadora_filtro != "Todas":
+        df_detalhe = df_detalhe[df_detalhe["Nome do transportadora"] == transportadora_filtro].copy()
+        titulo_detalhe += f" - {transportadora_filtro}"
 
     colunas = [
         "Data",
@@ -1829,7 +1698,8 @@ with col_detalhe:
         if coluna_texto in df_detalhe.columns:
             df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype("string")
 
-    st.markdown(f'<div class="panel"><div class="panel-title">{escape(titulo_detalhe)}</div>', unsafe_allow_html=True)
+    with titulo_col:
+        st.markdown(f'<div class="panel"><div class="panel-title">{escape(titulo_detalhe)}</div></div>', unsafe_allow_html=True)
     st.dataframe(
         df_detalhe,
         use_container_width=True,
@@ -1841,5 +1711,3 @@ with col_detalhe:
             "Código": st.column_config.TextColumn("Código"),
         },
     )
-    st.markdown("</div>", unsafe_allow_html=True)
-

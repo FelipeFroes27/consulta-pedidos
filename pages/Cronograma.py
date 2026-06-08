@@ -1662,6 +1662,19 @@ with col_rank:
         render_ranking("Distribuição por tipo", ranking_tipo, "Tipo", "ped.")
 
 with col_detalhe:
+    fornecedores_detalhe = ["Todos"] + sorted(df_detalhe["Subgrupo"].dropna().astype(str).unique())
+    titulo_col, filtro_col = st.columns([1.45, 1])
+    with filtro_col:
+        fornecedor_filtro = st.selectbox(
+            "Fornecedor",
+            fornecedores_detalhe,
+            key="recebimento_fornecedor_select",
+        )
+
+    if fornecedor_filtro != "Todos":
+        df_detalhe = df_detalhe[df_detalhe["Subgrupo"] == fornecedor_filtro].copy()
+        titulo_detalhe += f" - {fornecedor_filtro}"
+
     colunas = [
         "Numero do Pedido",
         "Data Entrega",
@@ -1696,7 +1709,8 @@ with col_detalhe:
         if coluna_texto in df_detalhe.columns:
             df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype("string")
 
-    st.markdown(f'<div class="panel"><div class="panel-title">{escape(titulo_detalhe)}</div>', unsafe_allow_html=True)
+    with titulo_col:
+        st.markdown(f'<div class="panel"><div class="panel-title">{escape(titulo_detalhe)}</div></div>', unsafe_allow_html=True)
     st.dataframe(
         df_detalhe,
         use_container_width=True,
@@ -1707,4 +1721,3 @@ with col_detalhe:
             "Código": st.column_config.TextColumn("Código"),
         },
     )
-    st.markdown("</div>", unsafe_allow_html=True)
