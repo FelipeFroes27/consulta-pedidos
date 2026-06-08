@@ -868,6 +868,51 @@ st.markdown(
     .next-card:last-child {
         margin-bottom: 0;
     }
+
+    div[data-baseweb="select"] > div,
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        border: 2px solid #000000 !important;
+        border-radius: 7px !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+
+    div[data-baseweb="select"] svg {
+        color: #000000 !important;
+    }
+
+    div[data-testid="stExpander"] {
+        border: 2px solid #000000 !important;
+        border-radius: 12px !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+        overflow: hidden !important;
+    }
+
+    div[data-testid="stExpander"] details,
+    div[data-testid="stExpander"] summary,
+    div[data-testid="stExpander"] [role="button"] {
+        border-color: #000000 !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+
+    div[data-testid="stExpander"] summary {
+        background: #ffffff !important;
+    }
+
+    div[data-testid="stDataFrame"] {
+        border: 2px solid #000000 !important;
+        border-radius: 12px !important;
+        box-shadow: none !important;
+    }
+
+    .next-icon,
+    .kpi-icon {
+        box-sizing: border-box !important;
+        border: 2px solid #000000 !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1022,7 +1067,7 @@ def render_proximos_embarques(proximas):
         st.markdown(
             f"""
             <div class="next-card {classe} {selecionado}">
-                <div class="next-icon">•</div>
+                <div class="next-icon" style="border:2px solid #000000;">•</div>
                 <div>
                     <div class="next-when">{escape(quando)}</div>
                     <span class="next-date">{data_recebimento.strftime("%d/%m/%Y")}</span>

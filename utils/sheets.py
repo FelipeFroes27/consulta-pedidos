@@ -34,7 +34,7 @@ def carregar_dados():
 
     aba = planilha.worksheet("Pedidos")
 
-    dados = aba.get_all_records()
+    dados = aba.get_all_records(numericise_ignore=["all"])
 
     return pd.DataFrame(dados)
 
@@ -50,6 +50,6 @@ def carregar_embarques():
 
     aba = planilha.worksheet("Embarques")
 
-    dados = aba.get_all_records()
+    dados = aba.get_all_records(numericise_ignore=["all"])
 
     return pd.DataFrame(dados)
