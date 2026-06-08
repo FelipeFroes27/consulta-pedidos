@@ -148,8 +148,29 @@ def _aplicar_layout_menu(menu_aberto):
     sidebar_css = (
         """
         [data-testid="stSidebar"] {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            transform: translateX(0) !important;
+            min-width: 18rem !important;
+            width: 18rem !important;
+            max-width: 18rem !important;
             background: #ffffff !important;
             border-right: 1px solid #000000 !important;
+            z-index: 999998 !important;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+            display: block !important;
+            visibility: visible !important;
+        }
+
+        [data-testid="stSidebar"] a,
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] span,
+        [data-testid="stSidebar"] .sidebar-logo {
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         """
         if menu_aberto
@@ -223,6 +244,10 @@ def _aplicar_layout_menu(menu_aberto):
 
         .block-container,
         [data-testid="stMainBlockContainer"] {{
+            max-width: min(1920px, calc(100vw - 2.5rem)) !important;
+            width: 100% !important;
+            padding-left: 1.25rem !important;
+            padding-right: 1.25rem !important;
             padding-top: 3.2rem !important;
         }}
         </style>
