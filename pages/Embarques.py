@@ -1068,6 +1068,10 @@ def texto(serie):
     return serie.fillna("").astype(str).str.strip()
 
 
+def chave_texto(serie):
+    return texto(serie).str.upper().str.replace(r"\s+", " ", regex=True)
+
+
 def preparar_dados(df_original):
     df = df_original.copy()
     obrigatorias = ["Data", "Numero do embarque", "Numero", "Quantidade", "Nome do transportadora"]
@@ -1096,7 +1100,18 @@ def preparar_dados(df_original):
 
     colunas_deduplicacao = ["Numero", "Codigo", "Descrição", "Quantidade"]
     if all(coluna in df.columns for coluna in colunas_deduplicacao):
-        df = df.drop_duplicates(subset=colunas_deduplicacao, keep="first").copy()
+        df["_dedup_nf"] = chave_texto(df["Numero"])
+        df["_dedup_codigo"] = chave_texto(df["Codigo"])
+        df["_dedup_descricao"] = chave_texto(df["Descrição"])
+        df["_dedup_quantidade"] = pd.to_numeric(df["Quantidade"], errors="coerce").fillna(0).round(6)
+        df = (
+            df.drop_duplicates(
+                subset=["_dedup_nf", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"],
+                keep="first",
+            )
+            .drop(columns=["_dedup_nf", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"])
+            .copy()
+        )
 
     return df
 
@@ -1558,7 +1573,6 @@ with nav_4:
     st.markdown("</div>", unsafe_allow_html=True)
 
 df_mes = df[df["Data"].dt.to_period("M") == mes_selecionado].copy()
-resumo_mes = resumo_por_data(df_mes)
 
 k1, k2, k3, k4 = st.columns(4)
 
@@ -1570,8 +1584,6 @@ with k3:
     render_kpi("Embarques", df_mes["Numero do embarque"].nunique(), "Embarques diferentes", "E", "orange")
 with k4:
     render_kpi("Transportadoras", df_mes["Nome do transportadora"].nunique(), "Transportadoras diferentes", "T", "purple")
-
-render_leitura_operacional(df_mes)
 
 proximas = proximas_datas(df)
 
@@ -1588,16 +1600,15 @@ with col_grafico:
             data_alerta = pd.to_datetime(st.session_state.embarque_data_alerta).date()
         render_analise_entrega(df, data_alerta)
 
-col_tabela, col_rank = st.columns([1.65, 1], gap="medium")
+if "embarque_data_alerta" in st.session_state:
+    data_detalhe = pd.to_datetime(st.session_state.embarque_data_alerta).date()
+    df_detalhe = df[df["Data Embarque"] == data_detalhe].copy()
+    titulo_detalhe = f"Embarques detalhados de {data_detalhe.strftime('%d/%m/%Y')}"
+else:
+    df_detalhe = df_mes.copy()
+    titulo_detalhe = "Embarques detalhados"
 
-with col_tabela:
-    st.markdown('<div class="panel"><div class="panel-title">Embarques do mês</div></div>', unsafe_allow_html=True)
-    st.markdown(render_tabela_mes(resumo_mes), unsafe_allow_html=True)
-
-    datas_disponiveis = ["Visão do mês"] + [
-        data.strftime("%d/%m/%Y") for data in resumo_mes["Data Embarque"].tolist()
-    ]
-    data_label = st.selectbox("Detalhar embarque", datas_disponiveis)
+col_rank, col_detalhe = st.columns([1, 1.65], gap="medium")
 
 with col_rank:
     aba_transportadora, aba_embarque, aba_volume = st.tabs(["Transportadoras", "Embarques", "Volumes"])
@@ -1632,47 +1643,40 @@ with col_rank:
         )
         render_ranking("Volumes por transportadora", ranking_volume, "Nome do transportadora", "Volumes", "vol.")
 
-if data_label != "Visão do mês":
-    data_detalhe = pd.to_datetime(data_label, dayfirst=True).date()
-    df_detalhe = df_mes[df_mes["Data Embarque"] == data_detalhe].copy()
-    titulo = f"Embarques detalhados de {data_label}"
-else:
-    df_detalhe = df_mes.copy()
-    titulo = "Embarques detalhados do mês"
+with col_detalhe:
+    colunas = [
+        "Data",
+        "Numero do embarque",
+        "Numero",
+        "Codigo",
+        "Descrição",
+        "Quantidade",
+        "Nome do transportadora",
+    ]
+    colunas = [col for col in colunas if col in df_detalhe.columns]
+    df_detalhe = df_detalhe[colunas].copy()
 
-colunas = [
-    "Data",
-    "Numero do embarque",
-    "Numero",
-    "Codigo",
-    "Descrição",
-    "Quantidade",
-    "Nome do transportadora",
-]
-colunas = [col for col in colunas if col in df_detalhe.columns]
-df_detalhe = df_detalhe[colunas].copy()
+    for coluna_texto in ["Numero do embarque", "Numero", "Codigo"]:
+        if coluna_texto in df_detalhe.columns:
+            df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype(str).str.strip()
 
-for coluna_texto in ["Numero do embarque", "Numero", "Codigo"]:
-    if coluna_texto in df_detalhe.columns:
-        df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype(str).str.strip()
+    if "Data" in df_detalhe.columns:
+        df_detalhe["Data"] = df_detalhe["Data"].dt.strftime("%d/%m/%Y")
 
-if "Data" in df_detalhe.columns:
-    df_detalhe["Data"] = df_detalhe["Data"].dt.strftime("%d/%m/%Y")
+    df_detalhe = df_detalhe.rename(
+        columns={
+            "Numero do embarque": "Número do embarque",
+            "Numero": "NF",
+            "Codigo": "Código",
+            "Nome do transportadora": "Transportadora",
+        }
+    )
 
-df_detalhe = df_detalhe.rename(
-    columns={
-        "Numero do embarque": "Número do embarque",
-        "Numero": "NF",
-        "Codigo": "Código",
-        "Nome do transportadora": "Transportadora",
-    }
-)
+    for coluna_texto in ["Número do embarque", "NF", "Código"]:
+        if coluna_texto in df_detalhe.columns:
+            df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype("string")
 
-for coluna_texto in ["Número do embarque", "NF", "Código"]:
-    if coluna_texto in df_detalhe.columns:
-        df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype("string")
-
-with st.expander(titulo, expanded=False):
+    st.markdown(f'<div class="panel"><div class="panel-title">{escape(titulo_detalhe)}</div>', unsafe_allow_html=True)
     st.dataframe(
         df_detalhe,
         use_container_width=True,
@@ -1684,4 +1688,5 @@ with st.expander(titulo, expanded=False):
             "Código": st.column_config.TextColumn("Código"),
         },
     )
+    st.markdown("</div>", unsafe_allow_html=True)
 

@@ -1591,7 +1591,6 @@ with nav_4:
     st.markdown("</div>", unsafe_allow_html=True)
 
 df_mes = df[df["Data Entrega"].dt.to_period("M") == mes_selecionado].copy()
-resumo_mes = resumo_por_data(df_mes)
 
 k1, k2, k3, k4 = st.columns(4)
 
@@ -1603,8 +1602,6 @@ with k3:
     render_kpi("Fornecedores", df_mes["Subgrupo"].nunique(), "Fornecedores diferentes", "●", "orange")
 with k4:
     render_kpi("Dias com Entrega", df_mes["Data Recebimento"].nunique(), "Dias no mês", "▣", "purple")
-
-render_leitura_operacional(df_mes)
 
 proximas = proximas_datas(df)
 
@@ -1621,16 +1618,15 @@ with col_grafico:
             data_alerta = pd.to_datetime(st.session_state.cronograma_data_alerta).date()
         render_analise_entrega(df, data_alerta)
 
-col_tabela, col_rank = st.columns([1.65, 1], gap="medium")
+if "cronograma_data_alerta" in st.session_state:
+    data_detalhe = pd.to_datetime(st.session_state.cronograma_data_alerta).date()
+    df_detalhe = df[df["Data Recebimento"] == data_detalhe].copy()
+    titulo_detalhe = f"Recebimentos detalhados de {data_detalhe.strftime('%d/%m/%Y')}"
+else:
+    df_detalhe = df_mes.copy()
+    titulo_detalhe = "Recebimentos detalhados"
 
-with col_tabela:
-    st.markdown('<div class="panel"><div class="panel-title">Recebimentos do mês</div></div>', unsafe_allow_html=True)
-    st.markdown(render_tabela_mes(resumo_mes), unsafe_allow_html=True)
-
-    datas_disponiveis = ["Visão do mês"] + [
-        data.strftime("%d/%m/%Y") for data in resumo_mes["Data Recebimento"].tolist()
-    ]
-    data_label = st.selectbox("Detalhar data", datas_disponiveis)
+col_rank, col_detalhe = st.columns([1, 1.65], gap="medium")
 
 with col_rank:
     aba_fornecedor, aba_grupo, aba_tipo = st.tabs(["Fornecedores", "Grupos", "Tipos"])
@@ -1665,49 +1661,42 @@ with col_rank:
         )
         render_ranking("Distribuição por tipo", ranking_tipo, "Tipo", "ped.")
 
-if data_label != "Visão do mês":
-    data_detalhe = pd.to_datetime(data_label, dayfirst=True).date()
-    df_detalhe = df_mes[df_mes["Data Recebimento"] == data_detalhe].copy()
-    titulo = f"Recebimentos detalhados de {data_label}"
-else:
-    df_detalhe = df_mes.copy()
-    titulo = "Recebimentos detalhados do mês"
+with col_detalhe:
+    colunas = [
+        "Numero do Pedido",
+        "Data Entrega",
+        "Subgrupo",
+        "Grupo",
+        "Codigo",
+        "Descricao",
+        "Qtde",
+    ]
+    colunas = [col for col in colunas if col in df_detalhe.columns]
+    df_detalhe = df_detalhe[colunas].copy()
 
-colunas = [
-    "Numero do Pedido",
-    "Data Entrega",
-    "Subgrupo",
-    "Grupo",
-    "Codigo",
-    "Descricao",
-    "Qtde",
-]
-colunas = [col for col in colunas if col in df_detalhe.columns]
-df_detalhe = df_detalhe[colunas].copy()
+    for coluna_texto in ["Numero do Pedido", "Codigo"]:
+        if coluna_texto in df_detalhe.columns:
+            df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype(str).str.strip()
 
-for coluna_texto in ["Numero do Pedido", "Codigo"]:
-    if coluna_texto in df_detalhe.columns:
-        df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype(str).str.strip()
+    if "Data Entrega" in df_detalhe.columns:
+        df_detalhe["Data Entrega"] = df_detalhe["Data Entrega"].dt.strftime("%d/%m/%Y")
 
-if "Data Entrega" in df_detalhe.columns:
-    df_detalhe["Data Entrega"] = df_detalhe["Data Entrega"].dt.strftime("%d/%m/%Y")
+    df_detalhe = df_detalhe.rename(
+        columns={
+            "Numero do Pedido": "Pedido",
+            "Data Entrega": "Data de Entrega",
+            "Subgrupo": "Fornecedor",
+            "Descricao": "Descrição",
+            "Codigo": "Código",
+            "Qtde": "Quantidade",
+        }
+    )
 
-df_detalhe = df_detalhe.rename(
-    columns={
-        "Numero do Pedido": "Pedido",
-        "Data Entrega": "Data de Entrega",
-        "Subgrupo": "Fornecedor",
-        "Descricao": "Descrição",
-        "Codigo": "Código",
-        "Qtde": "Quantidade",
-    }
-)
+    for coluna_texto in ["Pedido", "Código"]:
+        if coluna_texto in df_detalhe.columns:
+            df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype("string")
 
-for coluna_texto in ["Pedido", "Código"]:
-    if coluna_texto in df_detalhe.columns:
-        df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype("string")
-
-with st.expander(titulo, expanded=False):
+    st.markdown(f'<div class="panel"><div class="panel-title">{escape(titulo_detalhe)}</div>', unsafe_allow_html=True)
     st.dataframe(
         df_detalhe,
         use_container_width=True,
@@ -1718,3 +1707,4 @@ with st.expander(titulo, expanded=False):
             "Código": st.column_config.TextColumn("Código"),
         },
     )
+    st.markdown("</div>", unsafe_allow_html=True)
