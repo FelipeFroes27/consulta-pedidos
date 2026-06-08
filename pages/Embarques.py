@@ -821,6 +821,53 @@ st.markdown(
     .insight-grid {
         gap: 12px;
     }
+
+    .block-container,
+    [data-testid="stMainBlockContainer"] {
+        padding-top: 1.75rem;
+    }
+
+    div[data-testid="stVerticalBlock"] {
+        gap: 1.25rem !important;
+    }
+
+    div[data-testid="column"] {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
+    .kpi-card,
+    .panel,
+    .soft-panel,
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        margin: 0 !important;
+    }
+
+    .kpi-card {
+        min-height: 110px;
+    }
+
+    .month-title {
+        min-height: 48px;
+    }
+
+    .next-icon,
+    .next-card.danger .next-icon,
+    .next-card.warning .next-icon,
+    .next-card.soon .next-icon,
+    .next-card.safe .next-icon,
+    .next-card.today .next-icon,
+    .next-card.attention .next-icon {
+        border: 2px solid #000000 !important;
+    }
+
+    .next-card {
+        margin-bottom: 12px;
+    }
+
+    .next-card:last-child {
+        margin-bottom: 0;
+    }
     </style>
     """,
     unsafe_allow_html=True,

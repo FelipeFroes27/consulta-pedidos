@@ -72,11 +72,26 @@ def _ocultar_sidebar():
     st.markdown(
         """
         <style>
-        [data-testid="stSidebar"],
-        [data-testid="stSidebarCollapsedControl"],
+        [data-testid="stSidebar"] {
+            transform: translateX(-100%) !important;
+            min-width: 0 !important;
+            width: 0 !important;
+        }
+
         [data-testid="stSidebarCollapseButton"],
         [data-testid="collapsedControl"] {
             display: none !important;
+        }
+
+        [data-testid="stSidebarCollapsedControl"] {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            position: fixed !important;
+            top: 0.55rem !important;
+            left: 0.55rem !important;
+            z-index: 999999 !important;
         }
 
         [data-testid="stAppViewContainer"] > .main {
