@@ -1406,7 +1406,7 @@ def render_analise_entrega(df, data_alerta):
             fig_transportadora = ajustar_pizza(fig_transportadora)
             fig_transportadora.update_traces(hovertemplate="<b>%{label}</b><br>Notas fiscais: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_transportadora, altura=390, legenda=True, metrica="Notas fiscais"),
+                estilizar_grafico(fig_transportadora, altura=430, legenda=True, metrica="Notas fiscais"),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -1430,7 +1430,7 @@ def render_analise_entrega(df, data_alerta):
             fig_volume = ajustar_pizza(fig_volume)
             fig_volume.update_traces(hovertemplate="<b>%{label}</b><br>Volumes: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_volume, altura=390, legenda=True, metrica="Volumes"),
+                estilizar_grafico(fig_volume, altura=430, legenda=True, metrica="Volumes"),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -1468,7 +1468,7 @@ def estilizar_grafico(fig, altura=282, legenda=False, metrica="Valor"):
 
     fig.update_layout(
         height=altura,
-        margin=dict(l=8, r=8, t=4, b=92),
+        margin=dict(l=8, r=8, t=4, b=128),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
         font=dict(family="Arial", size=11, color="#475467"),
@@ -1476,7 +1476,7 @@ def estilizar_grafico(fig, altura=282, legenda=False, metrica="Valor"):
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.04,
+            y=-0.18,
             xanchor="center",
             x=0.5,
             font=dict(size=10, color="#101828"),
