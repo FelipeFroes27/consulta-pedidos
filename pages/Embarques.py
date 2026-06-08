@@ -990,12 +990,16 @@ st.markdown(
         border-radius: 10px !important;
         background: #ffffff !important;
         outline: none !important;
-        box-shadow: none !important;
     }
 
     .next-card.selected {
         box-shadow: inset 0 0 0 2px #000000 !important;
     }
+
+    .next-card.danger {box-shadow: inset 5px 0 0 #ef4444 !important;}
+    .next-card.warning {box-shadow: inset 5px 0 0 #f59e0b !important;}
+    .next-card.soon {box-shadow: inset 5px 0 0 #3b82f6 !important;}
+    .next-card.safe {box-shadow: inset 5px 0 0 #22c55e !important;}
 
     .next-card.danger .next-icon {background: #ef4444 !important;}
     .next-card.warning .next-icon {background: #f59e0b !important;}
@@ -1027,6 +1031,17 @@ st.markdown(
 
     .next-number {
         font-size: 14px !important;
+    }
+
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.analysis-chart-title) {
+        border: 2px solid #000000 !important;
+        border-radius: 12px !important;
+        padding: 14px !important;
+        box-shadow: none !important;
+    }
+
+    .analysis-chart-title {
+        margin-bottom: 8px !important;
     }
     </style>
     """,
@@ -1427,12 +1442,12 @@ def ajustar_pizza(fig):
         texttemplate="%{value}",
         textposition="inside",
         marker=dict(line=dict(color="#ffffff", width=2)),
-        domain=dict(x=[0.04, 0.96], y=[0.43, 1.0]),
+        domain=dict(x=[0.03, 0.64], y=[0.08, 0.98]),
     )
     return fig
 
 
-def encurtar_legenda(texto, limite=28):
+def encurtar_legenda(texto, limite=26):
     texto = str(texto)
     return texto if len(texto) <= limite else texto[: limite - 3] + "..."
 
@@ -1452,19 +1467,19 @@ def estilizar_grafico(fig, altura=282, legenda=False, metrica="Valor"):
 
     fig.update_layout(
         height=altura,
-        margin=dict(l=6, r=6, t=4, b=132),
+        margin=dict(l=6, r=6, t=4, b=8),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
         font=dict(family="Arial", size=11, color="#475467"),
         showlegend=legenda,
         legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=-0.04,
-            xanchor="center",
-            x=0.5,
+            orientation="v",
+            yanchor="middle",
+            y=0.5,
+            xanchor="left",
+            x=0.68,
             font=dict(size=10, color="#101828"),
-            itemwidth=86,
+            itemwidth=118,
             traceorder="normal",
         ),
     )
