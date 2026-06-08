@@ -7,6 +7,19 @@ from streamlit_autorefresh import st_autorefresh
 INATIVIDADE_SEGUNDOS = 2 * 60
 TROCA_TELA_SEGUNDOS = 60
 REFRESH_MS = 5 * 1000
+MENU_ABERTO_PADRAO = True
+
+
+def render_menu_lateral():
+    if "menu_lateral_aberto" not in st.session_state:
+        st.session_state.menu_lateral_aberto = MENU_ABERTO_PADRAO
+
+    if st.button("Menu", key="menu_lateral_toggle"):
+        st.session_state.menu_lateral_aberto = not st.session_state.menu_lateral_aberto
+        _registrar_atividade(time.time())
+        st.rerun()
+
+    _aplicar_layout_menu(st.session_state.menu_lateral_aberto)
 
 
 def ativar_modo_exibicao(pagina_atual):
@@ -69,45 +82,90 @@ def _registrar_atividade(agora):
 
 
 def _ocultar_sidebar():
-    st.markdown(
+    st.session_state.menu_lateral_aberto = False
+
+
+def _aplicar_layout_menu(menu_aberto):
+    left = "19.25rem" if menu_aberto else "0.9rem"
+    sidebar_css = (
         """
-        <style>
         [data-testid="stSidebar"] {
-            transform: none !important;
-            min-width: 3.25rem !important;
-            width: 3.25rem !important;
-            max-width: 3.25rem !important;
-            overflow: visible !important;
-            border-right: 1px solid #000000 !important;
             background: #ffffff !important;
+            border-right: 1px solid #000000 !important;
+        }
+        """
+        if menu_aberto
+        else """
+        [data-testid="stSidebar"] {
+            display: none !important;
         }
 
-        [data-testid="stSidebar"] [data-testid="stSidebarUserContent"],
-        [data-testid="stSidebar"] [data-testid="stSidebarNav"],
-        [data-testid="stSidebar"] .sidebar-logo,
-        [data-testid="stSidebar"] a {
+        [data-testid="stAppViewContainer"] > .main {
+            margin-left: 0 !important;
+        }
+        """
+    )
+
+    st.markdown(
+        f"""
+        <style>
+        header,
+        header[data-testid="stHeader"],
+        [data-testid="stHeader"],
+        [data-testid="stHeaderActionElements"],
+        [data-testid="stToolbar"],
+        [data-testid="stStatusWidget"],
+        [data-testid="stDecoration"] {
             display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        #MainMenu,
+        footer {
+            visibility: hidden !important;
         }
 
         [data-testid="stSidebarCollapseButton"],
         [data-testid="collapsedControl"],
         [data-testid="stSidebarCollapsedControl"] {
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            pointer-events: auto !important;
-            position: fixed !important;
-            top: 0.55rem !important;
-            left: 0.55rem !important;
-            z-index: 999999 !important;
-            color: #000000 !important;
-            background: #ffffff !important;
-            border: 1px solid #000000 !important;
-            border-radius: 8px !important;
+            display: none !important;
+            visibility: hidden !important;
         }
 
-        [data-testid="stAppViewContainer"] > .main {
-            margin-left: 0 !important;
+        {sidebar_css}
+
+        .st-key-menu_lateral_toggle {
+            position: fixed !important;
+            top: 0.75rem !important;
+            left: {left} !important;
+            z-index: 999999 !important;
+            width: 82px !important;
+        }
+
+        .st-key-menu_lateral_toggle button {
+            min-height: 38px !important;
+            padding: 0 14px !important;
+            border: 2px solid #000000 !important;
+            border-radius: 8px !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-weight: 700 !important;
+            box-shadow: none !important;
+        }
+
+        .st-key-menu_lateral_toggle button:hover {
+            border-color: #000000 !important;
+            color: #000000 !important;
+            background: #f2f4f7 !important;
+        }
+
+        .block-container,
+        [data-testid="stMainBlockContainer"] {
+            padding-top: 3.2rem !important;
         }
         </style>
         """,

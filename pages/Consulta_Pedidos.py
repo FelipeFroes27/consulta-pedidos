@@ -3,7 +3,7 @@ from pathlib import Path
 
 import streamlit as st
 import pandas as pd
-from utils.display_mode import ativar_modo_exibicao
+from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
 from utils.sheets import carregar_dados
 
 # ==================================================
@@ -28,7 +28,8 @@ st.markdown("""
 /* Mantem a seta lateral sem mostrar a barra superior */
 header,
 header[data-testid="stHeader"] {
-    visibility: visible !important;
+    display: none !important;
+    visibility: hidden !important;
     height: 0rem !important;
     min-height: 0rem !important;
     background: transparent !important;
@@ -43,14 +44,8 @@ header[data-testid="stHeader"] {
 [data-testid="collapsedControl"],
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="stSidebarCollapseButton"] {
-    visibility: visible !important;
-    display: flex !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    position: fixed !important;
-    top: 0.55rem !important;
-    left: 0.55rem !important;
-    z-index: 999999 !important;
+    visibility: hidden !important;
+    display: none !important;
 }
 
 [data-testid="stHeaderActionElements"],
@@ -166,6 +161,8 @@ div[data-testid="stDataFrame"] {
 
 </style>
 """, unsafe_allow_html=True)
+
+render_menu_lateral()
 
 with st.sidebar:
     st.markdown('<div class="sidebar-logo">', unsafe_allow_html=True)

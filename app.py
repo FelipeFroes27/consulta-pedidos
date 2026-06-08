@@ -3,7 +3,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from utils.display_mode import ativar_modo_exibicao
+from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
 
 
 st.set_page_config(
@@ -19,7 +19,10 @@ st.markdown(
     <style>
     header,
     header[data-testid="stHeader"] {
-        visibility: visible !important;
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        min-height: 0 !important;
         background: transparent !important;
         box-shadow: none !important;
         border: 0 !important;
@@ -168,6 +171,8 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+render_menu_lateral()
 
 with st.sidebar:
     st.markdown('<div class="sidebar-logo">', unsafe_allow_html=True)
