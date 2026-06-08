@@ -64,24 +64,33 @@ def _encontrar_coluna(df, nomes):
     return None
 
 
-def _remover_duplicados_embarques(df):
+def _colunas_deduplicacao_embarques(df):
     coluna_numero = _encontrar_coluna(df, ["Numero", "NF", "Nota Fiscal"])
     coluna_codigo = _encontrar_coluna(df, ["Código", "Codigo", "Cdigo", "C?digo"])
     coluna_descricao = _encontrar_coluna(df, ["Descrição", "Descricao", "Descrio", "Descri??o"])
     coluna_quantidade = _encontrar_coluna(df, ["Quantidade", "Qtde", "Qtd"])
+    colunas = [coluna_numero, coluna_codigo, coluna_descricao, coluna_quantidade]
+    return colunas if all(colunas) else None
 
-    st.session_state["embarques_duplicados_removidos"] = 0
 
-    if not all([coluna_numero, coluna_codigo, coluna_descricao, coluna_quantidade]):
-        return df
-
+def _adicionar_chaves_deduplicacao(df, colunas):
+    coluna_numero, coluna_codigo, coluna_descricao, coluna_quantidade = colunas
     df = df.copy()
-    linhas_antes = len(df)
     df["_dedup_numero"] = _texto_chave(df[coluna_numero])
     df["_dedup_codigo"] = _texto_chave(df[coluna_codigo])
     df["_dedup_descricao"] = _texto_chave(df[coluna_descricao])
     df["_dedup_quantidade"] = pd.to_numeric(df[coluna_quantidade], errors="coerce").fillna(0).round(6)
+    return df
 
+
+def _remover_duplicados_embarques(df):
+    colunas = _colunas_deduplicacao_embarques(df)
+
+    if not colunas:
+        return df
+
+    linhas_antes = len(df)
+    df = _adicionar_chaves_deduplicacao(df, colunas)
     df = (
         df.drop_duplicates(
             subset=["_dedup_numero", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"],
@@ -90,8 +99,49 @@ def _remover_duplicados_embarques(df):
         .drop(columns=["_dedup_numero", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"])
         .copy()
     )
-    st.session_state["embarques_duplicados_removidos"] = linhas_antes - len(df)
+    st.session_state["embarques_duplicados_removidos"] = (
+        st.session_state.get("embarques_duplicados_removidos", 0) + linhas_antes - len(df)
+    )
     return df
+
+
+def _linhas_duplicadas_embarques(df):
+    colunas = _colunas_deduplicacao_embarques(df)
+    if not colunas:
+        return []
+
+    df_chaves = _adicionar_chaves_deduplicacao(df, colunas)
+    duplicadas = df_chaves.duplicated(
+        subset=["_dedup_numero", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"],
+        keep="first",
+    )
+    return [indice + 2 for indice, duplicada in enumerate(duplicadas) if duplicada]
+
+
+def _agrupar_linhas_contiguas(linhas):
+    if not linhas:
+        return []
+
+    ranges = []
+    inicio = fim = linhas[0]
+
+    for linha in linhas[1:]:
+        if linha == fim + 1:
+            fim = linha
+        else:
+            ranges.append((inicio, fim))
+            inicio = fim = linha
+
+    ranges.append((inicio, fim))
+    return ranges
+
+
+def _excluir_linhas_duplicadas_na_aba(aba, linhas):
+    removidas = 0
+    for inicio, fim in reversed(_agrupar_linhas_contiguas(sorted(linhas))):
+        aba.delete_rows(inicio, fim)
+        removidas += fim - inicio + 1
+    return removidas
 
 
 @st.cache_data(ttl=300)
@@ -106,5 +156,14 @@ def carregar_embarques():
     aba = planilha.worksheet("Embarques")
 
     dados = aba.get_all_records(numericise_ignore=["all"])
+    df = pd.DataFrame(dados)
+    st.session_state["embarques_duplicados_removidos"] = 0
 
-    return _remover_duplicados_embarques(pd.DataFrame(dados))
+    linhas_duplicadas = _linhas_duplicadas_embarques(df)
+    if linhas_duplicadas:
+        removidas = _excluir_linhas_duplicadas_na_aba(aba, linhas_duplicadas)
+        st.session_state["embarques_duplicados_removidos"] = removidas
+        dados = aba.get_all_records(numericise_ignore=["all"])
+        df = pd.DataFrame(dados)
+
+    return _remover_duplicados_embarques(df)
