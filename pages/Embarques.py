@@ -1324,7 +1324,7 @@ def render_analise_entrega(df, data_alerta):
             fig_transportadora = ajustar_pizza(fig_transportadora)
             fig_transportadora.update_traces(hovertemplate="<b>%{label}</b><br>Notas fiscais: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_transportadora, altura=390, legenda=True),
+                estilizar_grafico(fig_transportadora, altura=390, legenda=True, metrica="Notas fiscais"),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -1348,7 +1348,7 @@ def render_analise_entrega(df, data_alerta):
             fig_volume = ajustar_pizza(fig_volume)
             fig_volume.update_traces(hovertemplate="<b>%{label}</b><br>Volumes: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_volume, altura=390, legenda=True),
+                estilizar_grafico(fig_volume, altura=390, legenda=True, metrica="Volumes"),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -1360,27 +1360,45 @@ def ajustar_pizza(fig):
         texttemplate="%{value}",
         textposition="inside",
         marker=dict(line=dict(color="#ffffff", width=2)),
-        domain=dict(x=[0.03, 0.97], y=[0.28, 1.0]),
+        domain=dict(x=[0.04, 0.96], y=[0.43, 1.0]),
     )
     return fig
 
 
-def estilizar_grafico(fig, altura=282, legenda=False):
+def encurtar_legenda(texto, limite=28):
+    texto = str(texto)
+    return texto if len(texto) <= limite else texto[: limite - 3] + "..."
+
+
+def ajustar_legenda_pizza(fig, metrica):
+    for trace in fig.data:
+        if hasattr(trace, "labels") and trace.labels is not None:
+            trace.customdata = list(trace.labels)
+            trace.labels = [encurtar_legenda(label) for label in trace.labels]
+            trace.hovertemplate = f"<b>%{{customdata}}</b><br>{metrica}: %{{value}}<extra></extra>"
+    return fig
+
+
+def estilizar_grafico(fig, altura=282, legenda=False, metrica="Valor"):
+    if legenda:
+        fig = ajustar_legenda_pizza(fig, metrica)
+
     fig.update_layout(
         height=altura,
-        margin=dict(l=6, r=6, t=4, b=84),
+        margin=dict(l=6, r=6, t=4, b=132),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
-        font=dict(family="Arial", size=12, color="#475467"),
+        font=dict(family="Arial", size=11, color="#475467"),
         showlegend=legenda,
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.02,
+            y=-0.04,
             xanchor="center",
             x=0.5,
-            font=dict(size=12, color="#101828"),
-            itemwidth=30,
+            font=dict(size=10, color="#101828"),
+            itemwidth=86,
+            traceorder="normal",
         ),
     )
     fig.update_xaxes(showgrid=False, linecolor="#e5eaf2", tickfont=dict(color="#667085"))

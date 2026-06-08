@@ -1393,27 +1393,45 @@ def ajustar_pizza(fig):
         texttemplate="%{value}",
         textposition="inside",
         marker=dict(line=dict(color="#ffffff", width=2)),
-        domain=dict(x=[0.03, 0.97], y=[0.28, 1.0]),
+        domain=dict(x=[0.04, 0.96], y=[0.43, 1.0]),
     )
     return fig
 
 
+def encurtar_legenda(texto, limite=28):
+    texto = str(texto)
+    return texto if len(texto) <= limite else texto[: limite - 3] + "..."
+
+
+def ajustar_legenda_pizza(fig):
+    for trace in fig.data:
+        if hasattr(trace, "labels") and trace.labels is not None:
+            trace.customdata = list(trace.labels)
+            trace.labels = [encurtar_legenda(label) for label in trace.labels]
+            trace.hovertemplate = "<b>%{customdata}</b><br>Itens: %{value}<extra></extra>"
+    return fig
+
+
 def estilizar_grafico(fig, altura=282, legenda=False):
+    if legenda:
+        fig = ajustar_legenda_pizza(fig)
+
     fig.update_layout(
         height=altura,
-        margin=dict(l=6, r=6, t=4, b=84),
+        margin=dict(l=6, r=6, t=4, b=132),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
-        font=dict(family="Arial", size=12, color="#475467"),
+        font=dict(family="Arial", size=11, color="#475467"),
         showlegend=legenda,
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.02,
+            y=-0.04,
             xanchor="center",
             x=0.5,
-            font=dict(size=12, color="#101828"),
-            itemwidth=30,
+            font=dict(size=10, color="#101828"),
+            itemwidth=86,
+            traceorder="normal",
         ),
     )
     fig.update_xaxes(showgrid=False, linecolor="#e5eaf2", tickfont=dict(color="#667085"))
