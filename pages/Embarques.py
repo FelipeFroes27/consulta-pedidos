@@ -1007,6 +1007,10 @@ def preparar_dados(df_original):
         if coluna in df.columns:
             df[coluna] = texto(df[coluna])
 
+    colunas_deduplicacao = ["Numero", "Codigo", "Descrição", "Quantidade"]
+    if all(coluna in df.columns for coluna in colunas_deduplicacao):
+        df = df.drop_duplicates(subset=colunas_deduplicacao, keep="first").copy()
+
     return df
 
 
