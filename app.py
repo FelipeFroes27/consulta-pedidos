@@ -174,7 +174,7 @@ with st.sidebar:
     st.image("Logo Branco.bmp", width=72)
     st.image("logo preto goper.png", width=32)
     st.markdown("</div>", unsafe_allow_html=True)
-    st.page_link("app.py", label="Inicio")
+    st.page_link("app.py", label="Início")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
     st.page_link("pages/Cronograma.py", label="Recebimentos")
     st.page_link("pages/Embarques.py", label="Embarques")
@@ -190,9 +190,9 @@ st.markdown(
     </div>
     <div class="home-hero">
         <div>
-            <h1 class="home-title">Sistema Logistico</h1>
+            <h1 class="home-title">Sistema Logístico</h1>
             <p class="home-copy">
-                Monitore pedidos, recebimentos e embarques em uma visao operacional unica,
+                Monitore pedidos, recebimentos e embarques em uma visão operacional única,
                 com foco em datas, fornecedores, transportadoras e volumes.
             </p>
         </div>
@@ -204,11 +204,11 @@ st.markdown(
             </div>
             <div class="home-section">
                 Aba Recebimentos
-                <span>Mostra proximos recebimentos, alertas por prazo, fornecedores e graficos de recebimento.</span>
+                <span>Mostra próximos recebimentos, alertas por prazo, fornecedores e gráficos de recebimento.</span>
             </div>
             <div class="home-section">
                 Aba Embarques
-                <span>Acompanha proximas saidas, volumes, transportadoras e analises dos embarques programados.</span>
+                <span>Acompanha próximas saídas, volumes, transportadoras e análises dos embarques programados.</span>
             </div>
         </div>
     </div>

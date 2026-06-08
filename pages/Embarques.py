@@ -1053,7 +1053,7 @@ with st.sidebar:
     st.image("Logo Branco.bmp", width=72)
     st.image("logo preto goper.png", width=32)
     st.markdown("</div>", unsafe_allow_html=True)
-    st.page_link("app.py", label="Inicio")
+    st.page_link("app.py", label="Início")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
     st.page_link("pages/Cronograma.py", label="Recebimentos")
     st.page_link("pages/Embarques.py", label="Embarques")
@@ -1078,9 +1078,9 @@ def preparar_dados(df_original):
     if df.empty:
         return df
 
-    df["Numero do embarque"] = texto(df["Numero do embarque"]).replace("", "Nao informado")
-    df["Numero"] = texto(df["Numero"]).replace("", "Nao informado")
-    df["Nome do transportadora"] = texto(df["Nome do transportadora"]).replace("", "Nao informado")
+    df["Numero do embarque"] = texto(df["Numero do embarque"]).replace("", "Não informado")
+    df["Numero"] = texto(df["Numero"]).replace("", "Não informado")
+    df["Nome do transportadora"] = texto(df["Nome do transportadora"]).replace("", "Não informado")
     df["Data Embarque"] = df["Data"].dt.date
 
     df["Quantidade"] = pd.to_numeric(df["Quantidade"], errors="coerce").fillna(0)
@@ -1150,7 +1150,7 @@ def label_prazo(data_recebimento):
     if dias == 0:
         return "Hoje", "danger"
     if dias == 1:
-        return "Amanha", "danger"
+        return "Amanhã", "danger"
     if dias < 5:
         return f"Em {dias} dias", "danger"
     if dias <= 10:
@@ -1169,7 +1169,7 @@ def render_proximos_embarques(proximas):
     if "embarque_data_alerta" not in st.session_state and not proximas.empty:
         st.session_state.embarque_data_alerta = proximas.iloc[0]["Data Embarque"].strftime("%Y-%m-%d")
 
-    st.markdown('<div class="panel-title next-panel-title">Proximos embarques</div>', unsafe_allow_html=True)
+    st.markdown('<div class="panel-title next-panel-title">Próximos embarques</div>', unsafe_allow_html=True)
 
     if proximas.empty:
         st.markdown('<div class="empty">Nenhum embarque futuro cadastrado.</div>', unsafe_allow_html=True)
@@ -1235,7 +1235,7 @@ def render_tabela_mes(resumo):
         )
 
     if not linhas:
-        return '<div class="empty">Sem embarques neste mes.</div>'
+        return '<div class="empty">Sem embarques neste mês.</div>'
 
     return (
         "<table class='mini-table'>"
@@ -1315,7 +1315,7 @@ def render_leitura_operacional(df_mes):
     st.markdown(
         f"""
         <div class="soft-panel">
-            <div class="panel-title">Leitura operacional do mes</div>
+            <div class="panel-title">Leitura operacional do mês</div>
             <div class="insight-grid">
                 <div class="insight">
                     <div class="insight-label">Transportadora dominante</div>
@@ -1341,13 +1341,13 @@ def render_leitura_operacional(df_mes):
 
 def render_analise_entrega(df, data_alerta):
     if data_alerta is None:
-        st.markdown('<div class="empty">Selecione um proximo embarque para analisar.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="empty">Selecione um próximo embarque para analisar.</div>', unsafe_allow_html=True)
         return
 
     df_alerta = df[df["Data Embarque"] == data_alerta].copy()
 
     if df_alerta.empty:
-        st.markdown('<div class="empty">Nao ha itens para o embarque selecionado.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="empty">Não há itens para o embarque selecionado.</div>', unsafe_allow_html=True)
         return
 
     notas = df_alerta["Numero"].nunique()
@@ -1361,7 +1361,7 @@ def render_analise_entrega(df, data_alerta):
 
     st.markdown(
         f"""
-        <div class="panel-title">Analise do embarque de {data_alerta.strftime("%d/%m/%Y")}</div>
+        <div class="panel-title">Análise do embarque de {data_alerta.strftime("%d/%m/%Y")}</div>
         <div class="insight-grid analysis-kpis">
             <div class="insight">
                 <div class="insight-label">Notas fiscais</div>
@@ -1502,7 +1502,7 @@ st.markdown(
     <div class="page-head">
         <div class="page-title">
             <h1>Embarques Programados</h1>
-            <p>Acompanhe as saidas previstas por data, transportadora e volume operacional.</p>
+            <p>Acompanhe as saídas previstas por data, transportadora e volume operacional.</p>
         </div>
         <div class="page-logos">
             <img src="data:image/bmp;base64,{logo_branco}" alt="Trendx">
@@ -1514,7 +1514,7 @@ st.markdown(
 )
 
 if df.empty:
-    st.markdown('<div class="empty">Nao ha datas validas na coluna Data da aba Embarques.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="empty">Não há datas válidas na coluna Data da aba Embarques.</div>', unsafe_allow_html=True)
     st.stop()
 
 meses = sorted(df["Data"].dt.to_period("M").unique())
@@ -1586,10 +1586,10 @@ with col_grafico:
 col_tabela, col_rank = st.columns([1.65, 1], gap="medium")
 
 with col_tabela:
-    st.markdown('<div class="panel"><div class="panel-title">Embarques do mes</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="panel"><div class="panel-title">Embarques do mês</div></div>', unsafe_allow_html=True)
     st.markdown(render_tabela_mes(resumo_mes), unsafe_allow_html=True)
 
-    datas_disponiveis = ["Visao do mes"] + [
+    datas_disponiveis = ["Visão do mês"] + [
         data.strftime("%d/%m/%Y") for data in resumo_mes["Data Embarque"].tolist()
     ]
     data_label = st.selectbox("Detalhar embarque", datas_disponiveis)
@@ -1605,7 +1605,7 @@ with col_rank:
             .sort_values("Notas", ascending=False)
             .head(6)
         )
-        render_ranking("Top transportadoras do mes", ranking_transportadora, "Nome do transportadora", "Notas", "notas")
+        render_ranking("Top transportadoras do mês", ranking_transportadora, "Nome do transportadora", "Notas", "notas")
 
     with aba_embarque:
         ranking_embarque = (
@@ -1627,13 +1627,13 @@ with col_rank:
         )
         render_ranking("Volumes por transportadora", ranking_volume, "Nome do transportadora", "Volumes", "vol.")
 
-if data_label != "Visao do mes":
+if data_label != "Visão do mês":
     data_detalhe = pd.to_datetime(data_label, dayfirst=True).date()
     df_detalhe = df_mes[df_mes["Data Embarque"] == data_detalhe].copy()
     titulo = f"Embarques detalhados de {data_label}"
 else:
     df_detalhe = df_mes.copy()
-    titulo = "Embarques detalhados do mes"
+    titulo = "Embarques detalhados do mês"
 
 colunas = [
     "Data",
@@ -1656,11 +1656,14 @@ if "Data" in df_detalhe.columns:
 
 df_detalhe = df_detalhe.rename(
     columns={
+        "Numero do embarque": "Número do embarque",
         "Numero": "NF",
+        "Codigo": "Código",
+        "Nome do transportadora": "Transportadora",
     }
 )
 
-for coluna_texto in ["Numero do embarque", "NF", "Codigo"]:
+for coluna_texto in ["Número do embarque", "NF", "Código"]:
     if coluna_texto in df_detalhe.columns:
         df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype("string")
 
@@ -1671,8 +1674,9 @@ with st.expander(titulo, expanded=False):
         hide_index=True,
         height=360,
         column_config={
+            "Número do embarque": st.column_config.TextColumn("Número do embarque"),
             "NF": st.column_config.TextColumn("NF"),
-            "Codigo": st.column_config.TextColumn("Codigo"),
+            "Código": st.column_config.TextColumn("Código"),
         },
     )
 

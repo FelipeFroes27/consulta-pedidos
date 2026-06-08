@@ -1094,7 +1094,7 @@ with st.sidebar:
     st.image("Logo Branco.bmp", width=72)
     st.image("logo preto goper.png", width=32)
     st.markdown("</div>", unsafe_allow_html=True)
-    st.page_link("app.py", label="Inicio")
+    st.page_link("app.py", label="Início")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
     st.page_link("pages/Cronograma.py", label="Recebimentos")
     st.page_link("pages/Embarques.py", label="Embarques")
@@ -1120,19 +1120,19 @@ def preparar_dados(df_original):
         return df
 
     df["Numero do Pedido"] = texto(df["Numero do Pedido"])
-    df["Subgrupo"] = texto(df["Subgrupo"]).replace("", "Nao informado")
-    df["Grupo"] = texto(df["Grupo"]).replace("", "Nao informado")
+    df["Subgrupo"] = texto(df["Subgrupo"]).replace("", "Não informado")
+    df["Grupo"] = texto(df["Grupo"]).replace("", "Não informado")
     df["Data Recebimento"] = df["Data Entrega"].dt.date
 
     if "Tipo" in df.columns:
-        df["Tipo"] = texto(df["Tipo"]).replace("", "Nao informado")
+        df["Tipo"] = texto(df["Tipo"]).replace("", "Não informado")
     else:
-        df["Tipo"] = "Nao informado"
+        df["Tipo"] = "Não informado"
 
     if "Categoria" in df.columns:
-        df["Categoria"] = texto(df["Categoria"]).replace("", "Nao informado")
+        df["Categoria"] = texto(df["Categoria"]).replace("", "Não informado")
     else:
-        df["Categoria"] = "Nao informado"
+        df["Categoria"] = "Não informado"
 
     if "Qtde" in df.columns:
         df["Qtde"] = pd.to_numeric(df["Qtde"], errors="coerce").fillna(0)
@@ -1194,7 +1194,7 @@ def label_prazo(data_recebimento):
     if dias == 0:
         return "Hoje", "danger"
     if dias == 1:
-        return "Amanha", "danger"
+        return "Amanhã", "danger"
     if dias < 5:
         return f"Em {dias} dias", "danger"
     if dias <= 10:
@@ -1213,7 +1213,7 @@ def render_proximas_entregas(proximas):
     if "cronograma_data_alerta" not in st.session_state and not proximas.empty:
         st.session_state.cronograma_data_alerta = proximas.iloc[0]["Data Recebimento"].strftime("%Y-%m-%d")
 
-    st.markdown('<div class="panel-title next-panel-title">Proximas entregas</div>', unsafe_allow_html=True)
+    st.markdown('<div class="panel-title next-panel-title">Próximas entregas</div>', unsafe_allow_html=True)
 
     if proximas.empty:
         st.markdown('<div class="empty">Nenhum recebimento futuro cadastrado.</div>', unsafe_allow_html=True)
@@ -1281,7 +1281,7 @@ def render_tabela_mes(resumo):
         )
 
     if not linhas:
-        return '<div class="empty">Sem recebimentos neste mes.</div>'
+        return '<div class="empty">Sem recebimentos neste mês.</div>'
 
     return (
         "<table class='mini-table'>"
@@ -1353,7 +1353,7 @@ def render_leitura_operacional(df_mes):
     st.markdown(
         f"""
         <div class="soft-panel">
-            <div class="panel-title">Leitura operacional do mes</div>
+            <div class="panel-title">Leitura operacional do mês</div>
             <div class="insight-grid">
                 <div class="insight">
                     <div class="insight-label">Grupo dominante</div>
@@ -1379,13 +1379,13 @@ def render_leitura_operacional(df_mes):
 
 def render_analise_entrega(df, data_alerta):
     if data_alerta is None:
-        st.markdown('<div class="empty">Selecione uma proxima entrega para analisar.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="empty">Selecione uma próxima entrega para analisar.</div>', unsafe_allow_html=True)
         return
 
     df_alerta = df[df["Data Recebimento"] == data_alerta].copy()
 
     if df_alerta.empty:
-        st.markdown('<div class="empty">Nao ha itens para a data selecionada.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="empty">Não há itens para a data selecionada.</div>', unsafe_allow_html=True)
         return
 
     pedidos = df_alerta["Numero do Pedido"].nunique()
@@ -1398,7 +1398,7 @@ def render_analise_entrega(df, data_alerta):
 
     st.markdown(
         f"""
-        <div class="panel-title">Analise da entrega de {data_alerta.strftime("%d/%m/%Y")}</div>
+        <div class="panel-title">Análise da entrega de {data_alerta.strftime("%d/%m/%Y")}</div>
         <div class="insight-grid" style="margin-bottom: 12px;">
             <div class="insight">
                 <div class="insight-label">Pedidos</div>
@@ -1547,7 +1547,7 @@ st.markdown(
 )
 
 if df.empty:
-    st.markdown('<div class="empty">Nao ha datas validas na coluna Data Entrega da aba Pedidos.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="empty">Não há datas válidas na coluna Data Entrega da aba Pedidos.</div>', unsafe_allow_html=True)
     st.stop()
 
 meses = sorted(df["Data Entrega"].dt.to_period("M").unique())
@@ -1591,13 +1591,13 @@ resumo_mes = resumo_por_data(df_mes)
 k1, k2, k3, k4 = st.columns(4)
 
 with k1:
-    render_kpi("Pedidos do Mes", df_mes["Numero do Pedido"].nunique(), "Total de pedidos", "▤", "blue")
+    render_kpi("Pedidos do Mês", df_mes["Numero do Pedido"].nunique(), "Total de pedidos", "▤", "blue")
 with k2:
-    render_kpi("Itens do Mes", df_mes["Qtde"].sum(), "Soma das quantidades", "□", "green")
+    render_kpi("Itens do Mês", df_mes["Qtde"].sum(), "Soma das quantidades", "□", "green")
 with k3:
     render_kpi("Fornecedores", df_mes["Subgrupo"].nunique(), "Fornecedores diferentes", "●", "orange")
 with k4:
-    render_kpi("Dias com Entrega", df_mes["Data Recebimento"].nunique(), "Dias no mes", "▣", "purple")
+    render_kpi("Dias com Entrega", df_mes["Data Recebimento"].nunique(), "Dias no mês", "▣", "purple")
 
 render_leitura_operacional(df_mes)
 
@@ -1619,10 +1619,10 @@ with col_grafico:
 col_tabela, col_rank = st.columns([1.65, 1], gap="medium")
 
 with col_tabela:
-    st.markdown('<div class="panel"><div class="panel-title">Recebimentos do mes</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="panel"><div class="panel-title">Recebimentos do mês</div></div>', unsafe_allow_html=True)
     st.markdown(render_tabela_mes(resumo_mes), unsafe_allow_html=True)
 
-    datas_disponiveis = ["Visao do mes"] + [
+    datas_disponiveis = ["Visão do mês"] + [
         data.strftime("%d/%m/%Y") for data in resumo_mes["Data Recebimento"].tolist()
     ]
     data_label = st.selectbox("Detalhar data", datas_disponiveis)
@@ -1638,7 +1638,7 @@ with col_rank:
             .sort_values("Pedidos", ascending=False)
             .head(6)
         )
-        render_ranking("Top fornecedores do mes", ranking_fornecedor, "Subgrupo", "ped.")
+        render_ranking("Top fornecedores do mês", ranking_fornecedor, "Subgrupo", "ped.")
 
     with aba_grupo:
         ranking_grupo = (
@@ -1648,7 +1648,7 @@ with col_rank:
             .sort_values("Pedidos", ascending=False)
             .head(6)
         )
-        render_ranking("Distribuicao por grupo", ranking_grupo, "Grupo", "ped.")
+        render_ranking("Distribuição por grupo", ranking_grupo, "Grupo", "ped.")
 
     with aba_tipo:
         ranking_tipo = (
@@ -1658,15 +1658,15 @@ with col_rank:
             .sort_values("Pedidos", ascending=False)
             .head(6)
         )
-        render_ranking("Distribuicao por tipo", ranking_tipo, "Tipo", "ped.")
+        render_ranking("Distribuição por tipo", ranking_tipo, "Tipo", "ped.")
 
-if data_label != "Visao do mes":
+if data_label != "Visão do mês":
     data_detalhe = pd.to_datetime(data_label, dayfirst=True).date()
     df_detalhe = df_mes[df_mes["Data Recebimento"] == data_detalhe].copy()
     titulo = f"Recebimentos detalhados de {data_label}"
 else:
     df_detalhe = df_mes.copy()
-    titulo = "Recebimentos detalhados do mes"
+    titulo = "Recebimentos detalhados do mês"
 
 colunas = [
     "Numero do Pedido",
@@ -1690,12 +1690,15 @@ if "Data Entrega" in df_detalhe.columns:
 df_detalhe = df_detalhe.rename(
     columns={
         "Numero do Pedido": "Pedido",
+        "Data Entrega": "Data de Entrega",
         "Subgrupo": "Fornecedor",
-        "Descricao": "Descricao",
+        "Descricao": "Descrição",
+        "Codigo": "Código",
+        "Qtde": "Quantidade",
     }
 )
 
-for coluna_texto in ["Pedido", "Codigo"]:
+for coluna_texto in ["Pedido", "Código"]:
     if coluna_texto in df_detalhe.columns:
         df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype("string")
 
@@ -1707,6 +1710,6 @@ with st.expander(titulo, expanded=False):
         height=360,
         column_config={
             "Pedido": st.column_config.TextColumn("Pedido"),
-            "Codigo": st.column_config.TextColumn("Codigo"),
+            "Código": st.column_config.TextColumn("Código"),
         },
     )

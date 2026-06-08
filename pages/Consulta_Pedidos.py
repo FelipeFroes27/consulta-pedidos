@@ -172,7 +172,7 @@ with st.sidebar:
     st.image("Logo Branco.bmp", width=72)
     st.image("logo preto goper.png", width=32)
     st.markdown("</div>", unsafe_allow_html=True)
-    st.page_link("app.py", label="Inicio")
+    st.page_link("app.py", label="Início")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
     st.page_link("pages/Cronograma.py", label="Recebimentos")
     st.page_link("pages/Embarques.py", label="Embarques")
@@ -497,6 +497,15 @@ if pesquisar:
     for coluna_texto in ["Numero do Pedido", "Codigo"]:
         resultado[coluna_texto] = resultado[coluna_texto].fillna("").astype("string")
 
+    resultado = resultado.rename(
+        columns={
+            "Numero do Pedido": "Número do Pedido",
+            "Codigo": "Código",
+            "Descricao": "Descrição",
+            "Qtde": "Quantidade",
+        }
+    )
+
     st.divider()
 
     st.caption(
@@ -509,7 +518,7 @@ if pesquisar:
         hide_index=True,
         height=800,
         column_config={
-            "Numero do Pedido": st.column_config.TextColumn("Numero do Pedido"),
-            "Codigo": st.column_config.TextColumn("Codigo"),
+            "Número do Pedido": st.column_config.TextColumn("Número do Pedido"),
+            "Código": st.column_config.TextColumn("Código"),
         },
     )
