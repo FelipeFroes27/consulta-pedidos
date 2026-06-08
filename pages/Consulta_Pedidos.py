@@ -1,5 +1,9 @@
+import base64
+from pathlib import Path
+
 import streamlit as st
 import pandas as pd
+from utils.display_mode import ativar_modo_exibicao
 from utils.sheets import carregar_dados
 
 # ==================================================
@@ -12,17 +16,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+ativar_modo_exibicao()
+
 # ==================================================
 # CSS
 # ==================================================
 
 st.markdown("""
 <style>
-
-/* Mantem a seta lateral e deixa a barra superior transparente */
-header,
-header[data-testid="stHeader"] {
-    visibility: visible !important;
 
 /* Mantem a seta lateral sem mostrar a barra superior */
 header,
@@ -37,6 +38,8 @@ header[data-testid="stHeader"] {
 
 [data-testid="stStatusWidget"] {
     display: none !important;
+}
+
 [data-testid="collapsedControl"],
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="stSidebarCollapseButton"] {
@@ -68,8 +71,9 @@ footer {
 /* Reduz espaço superior */
 .block-container,
 [data-testid="stMainBlockContainer"] {
-    padding-top: 0.75rem;
-    padding-bottom: 0rem;
+    max-width: 1540px;
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
 }
 
 /* Compacta componentes */
@@ -77,19 +81,123 @@ div[data-baseweb="select"] {
     font-size: 14px;
 }
 
+.sidebar-logo {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0 18px 0;
+}
+
+.stApp,
+[data-testid="stAppViewContainer"] {
+    background: #ffffff;
+    color: #000000;
+}
+
+[data-testid="stSidebar"] {
+    background: #ffffff !important;
+    border-right: 1px solid #000000;
+}
+
+[data-testid="stSidebarNav"] {
+    display: none !important;
+}
+
+[data-testid="stSidebar"] a,
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+label,
+.stMarkdown,
+.stCaptionContainer {
+    color: #000000 !important;
+}
+
+.sidebar-logo img {
+    background: #ffffff;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+}
+
+.page-logos {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+}
+
+.page-logos img {
+    max-height: 30px;
+    max-width: 104px;
+    object-fit: contain;
+}
+
+.page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 1.25rem;
+}
+
+.page-title h1 {
+    margin: 0;
+    color: #000000;
+    font-size: 29px;
+    line-height: 1.05;
+    font-weight: 850;
+    letter-spacing: 0;
+}
+
+.stButton > button,
+div[data-baseweb="select"] > div,
+[data-testid="stDateInput"] input {
+    border: 2px solid #000000 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border-radius: 7px !important;
+    box-shadow: none !important;
+}
+
+div[data-testid="stDataFrame"] {
+    border: 2px solid #000000;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
+    st.markdown('<div class="sidebar-logo">', unsafe_allow_html=True)
+    st.image("Logo Branco.bmp", width=72)
+    st.image("logo preto goper.png", width=32)
+    st.markdown("</div>", unsafe_allow_html=True)
     st.page_link("app.py", label="Inicio")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
-    st.page_link("pages/Cronograma.py", label="Cronograma")
+    st.page_link("pages/Cronograma.py", label="Recebimentos")
+    st.page_link("pages/Embarques.py", label="Embarques")
 
 # ==================================================
 # TÍTULO
 # ==================================================
 
-st.markdown("## Consulta de Pedidos")
+logo_branco = base64.b64encode(Path("Logo Branco.bmp").read_bytes()).decode("utf-8")
+logo_preto = base64.b64encode(Path("logo preto goper.png").read_bytes()).decode("utf-8")
+
+st.markdown(
+    f"""
+    <div class="page-head">
+        <div class="page-title">
+            <h1>Consulta de Pedidos</h1>
+        </div>
+        <div class="page-logos">
+            <img src="data:image/bmp;base64,{logo_branco}" alt="Trendx">
+            <img src="data:image/png;base64,{logo_preto}" alt="Goper">
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ==================================================
 # CARREGAR DADOS

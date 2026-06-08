@@ -1,16 +1,16 @@
-import base64
-from html import escape
-from pathlib import Path
+﻿from html import escape
 
 import pandas as pd
+import base64
 import plotly.express as px
 import streamlit as st
+from pathlib import Path
 
 from utils.display_mode import ativar_modo_exibicao
-from utils.sheets import carregar_dados
+from utils.sheets import carregar_embarques
 
 
-st.set_page_config(page_title="Recebimentos", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Embarques", layout="wide", initial_sidebar_state="expanded")
 ativar_modo_exibicao()
 
 
@@ -377,6 +377,11 @@ st.markdown(
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
+    }
+
+    .analysis-kpis {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-bottom: 14px;
     }
 
     .insight {
@@ -838,40 +843,27 @@ def texto(serie):
 
 def preparar_dados(df_original):
     df = df_original.copy()
-    obrigatorias = ["Data Entrega", "Numero do Pedido", "Subgrupo", "Grupo"]
+    obrigatorias = ["Data", "Numero do embarque", "Numero", "Quantidade", "Nome do transportadora"]
     faltantes = [col for col in obrigatorias if col not in df.columns]
 
     if faltantes:
-        st.error("A aba Pedidos precisa conter estas colunas: " + ", ".join(obrigatorias))
+        st.error("A aba Embarques precisa conter estas colunas: " + ", ".join(faltantes))
         st.stop()
 
-    df["Data Entrega"] = pd.to_datetime(df["Data Entrega"], errors="coerce", dayfirst=True)
-    df = df[df["Data Entrega"].notna()].copy()
+    df["Data"] = pd.to_datetime(df["Data"], errors="coerce", dayfirst=True)
+    df = df[df["Data"].notna()].copy()
 
     if df.empty:
         return df
 
-    df["Numero do Pedido"] = texto(df["Numero do Pedido"])
-    df["Subgrupo"] = texto(df["Subgrupo"]).replace("", "Nao informado")
-    df["Grupo"] = texto(df["Grupo"]).replace("", "Nao informado")
-    df["Data Recebimento"] = df["Data Entrega"].dt.date
+    df["Numero do embarque"] = texto(df["Numero do embarque"]).replace("", "Nao informado")
+    df["Numero"] = texto(df["Numero"]).replace("", "Nao informado")
+    df["Nome do transportadora"] = texto(df["Nome do transportadora"]).replace("", "Nao informado")
+    df["Data Embarque"] = df["Data"].dt.date
 
-    if "Tipo" in df.columns:
-        df["Tipo"] = texto(df["Tipo"]).replace("", "Nao informado")
-    else:
-        df["Tipo"] = "Nao informado"
+    df["Quantidade"] = pd.to_numeric(df["Quantidade"], errors="coerce").fillna(0)
 
-    if "Categoria" in df.columns:
-        df["Categoria"] = texto(df["Categoria"]).replace("", "Nao informado")
-    else:
-        df["Categoria"] = "Nao informado"
-
-    if "Qtde" in df.columns:
-        df["Qtde"] = pd.to_numeric(df["Qtde"], errors="coerce").fillna(0)
-    else:
-        df["Qtde"] = 1
-
-    for coluna in ["Codigo", "Descricao", "Marca"]:
+    for coluna in ["Num box", "Placa", "Codigo", "Descrição", "Endereço nota", "Status"]:
         if coluna in df.columns:
             df[coluna] = texto(df[coluna])
 
@@ -904,18 +896,24 @@ def render_kpi(titulo, valor, nota, icone, cor):
 
 def resumo_por_data(df):
     return (
-        df.groupby("Data Recebimento")
+        df.groupby("Data Embarque")
         .agg(
-            Pedidos=("Numero do Pedido", "nunique"),
-            Itens=("Qtde", "sum"),
-            Linhas=("Numero do Pedido", "size"),
-            Fornecedores=("Subgrupo", "nunique"),
-            Principal_Fornecedor=("Subgrupo", lambda s: s.value_counts().index[0] if not s.empty else ""),
-            Grupo_Principal=("Grupo", lambda s: s.value_counts().index[0] if not s.empty else ""),
-            Tipo_Principal=("Tipo", lambda s: s.value_counts().index[0] if not s.empty else ""),
+            Notas=("Numero", "nunique"),
+            Volumes=("Quantidade", "sum"),
+            Linhas=("Numero", "size"),
+            Embarques=("Numero do embarque", "nunique"),
+            Transportadoras=("Nome do transportadora", "nunique"),
+            Transportadora_Principal=(
+                "Nome do transportadora",
+                lambda s: s.value_counts().index[0] if not s.empty else "",
+            ),
+            Embarque_Principal=(
+                "Numero do embarque",
+                lambda s: s.value_counts().index[0] if not s.empty else "",
+            ),
         )
         .reset_index()
-        .sort_values("Data Recebimento")
+        .sort_values("Data Embarque")
     )
 
 
@@ -938,58 +936,58 @@ def label_prazo(data_recebimento):
 
 def proximas_datas(df, limite=5):
     hoje = pd.Timestamp.today().normalize().date()
-    return resumo_por_data(df[df["Data Recebimento"] >= hoje]).head(limite)
+    return resumo_por_data(df[df["Data Embarque"] >= hoje]).head(limite)
 
 
-def render_proximas_entregas(proximas):
-    if "cronograma_data_alerta" not in st.session_state and not proximas.empty:
-        st.session_state.cronograma_data_alerta = proximas.iloc[0]["Data Recebimento"].strftime("%Y-%m-%d")
+def render_proximos_embarques(proximas):
+    if "embarque_data_alerta" not in st.session_state and not proximas.empty:
+        st.session_state.embarque_data_alerta = proximas.iloc[0]["Data Embarque"].strftime("%Y-%m-%d")
 
-    st.markdown('<div class="panel-title next-panel-title">Proximas entregas</div>', unsafe_allow_html=True)
+    st.markdown('<div class="panel-title next-panel-title">Proximos embarques</div>', unsafe_allow_html=True)
 
     if proximas.empty:
-        st.markdown('<div class="empty">Nenhum recebimento futuro cadastrado.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="empty">Nenhum embarque futuro cadastrado.</div>', unsafe_allow_html=True)
         return
 
     opcoes = {
-        f"{label_prazo(linha['Data Recebimento'])[0]} - {linha['Data Recebimento'].strftime('%d/%m/%Y')}": linha["Data Recebimento"].strftime("%Y-%m-%d")
+        f"{label_prazo(linha['Data Embarque'])[0]} - {linha['Data Embarque'].strftime('%d/%m/%Y')}": linha["Data Embarque"].strftime("%Y-%m-%d")
         for _, linha in proximas.iterrows()
     }
     valores = list(opcoes.values())
-    valor_atual = st.session_state.get("cronograma_data_alerta", valores[0])
+    valor_atual = st.session_state.get("embarque_data_alerta", valores[0])
     indice_atual = valores.index(valor_atual) if valor_atual in valores else 0
 
     st.markdown('<div class="analysis-select">', unsafe_allow_html=True)
     escolha = st.selectbox(
-        "Entrega analisada",
+        "Embarque analisado",
         list(opcoes.keys()),
         index=indice_atual,
         label_visibility="collapsed",
     )
-    st.session_state.cronograma_data_alerta = opcoes[escolha]
+    st.session_state.embarque_data_alerta = opcoes[escolha]
     st.markdown("</div>", unsafe_allow_html=True)
 
     for _, linha in proximas.iterrows():
-        data_recebimento = linha["Data Recebimento"]
+        data_recebimento = linha["Data Embarque"]
         quando, classe = label_prazo(data_recebimento)
-        selecionado = "selected" if data_recebimento.strftime("%Y-%m-%d") == st.session_state.cronograma_data_alerta else ""
+        selecionado = "selected" if data_recebimento.strftime("%Y-%m-%d") == st.session_state.embarque_data_alerta else ""
 
         st.markdown(
             f"""
             <div class="next-card {classe} {selecionado}">
-                <div class="next-icon">▦</div>
+                <div class="next-icon">•</div>
                 <div>
                     <div class="next-when">{escape(quando)}</div>
                     <span class="next-date">{data_recebimento.strftime("%d/%m/%Y")}</span>
-                    <span class="next-extra">{escape(str(linha["Grupo_Principal"]))} | {escape(str(linha["Tipo_Principal"]))}</span>
+                    <span class="next-extra">{escape(str(linha["Transportadora_Principal"]))} | {escape(str(linha["Embarque_Principal"]))}</span>
                 </div>
                 <div class="next-metric">
-                    <div class="next-number">{numero(linha["Pedidos"])}</div>
-                    <div class="next-label">Pedidos</div>
+                    <div class="next-number">{numero(linha["Notas"])}</div>
+                    <div class="next-label">Notas</div>
                 </div>
                 <div class="next-metric">
-                    <div class="next-number">{numero(linha["Itens"])}</div>
-                    <div class="next-label">Itens</div>
+                    <div class="next-number">{numero(linha["Volumes"])}</div>
+                    <div class="next-label">Volumes</div>
                 </div>
             </div>
             """,
@@ -1002,30 +1000,26 @@ def render_tabela_mes(resumo):
     for _, linha in resumo.head(8).iterrows():
         linhas.append(
             "<tr>"
-            f"<td>{linha['Data Recebimento'].strftime('%d/%m/%Y')}</td>"
-            f"<td class='num'>{numero(linha['Pedidos'])}</td>"
-            f"<td class='num'>{numero(linha['Itens'])}</td>"
-            f"<td class='num'>{numero(linha['Fornecedores'])}</td>"
-            f"<td><span class='tag' title='{escape(str(linha['Principal_Fornecedor']))}'>{escape(str(linha['Principal_Fornecedor']))}</span></td>"
-            f"<td><span class='tag green' title='{escape(str(linha['Grupo_Principal']))}'>{escape(str(linha['Grupo_Principal']))}</span></td>"
-            f"<td><span class='tag orange' title='{escape(str(linha['Tipo_Principal']))}'>{escape(str(linha['Tipo_Principal']))}</span></td>"
+            f"<td>{linha['Data Embarque'].strftime('%d/%m/%Y')}</td>"
+            f"<td class='num'>{numero(linha['Notas'])}</td>"
+            f"<td class='num'>{numero(linha['Volumes'])}</td>"
+            f"<td class='num'>{numero(linha['Embarques'])}</td>"
+            f"<td class='num'>{numero(linha['Transportadoras'])}</td>"
             "</tr>"
         )
 
     if not linhas:
-        return '<div class="empty">Sem recebimentos neste mes.</div>'
+        return '<div class="empty">Sem embarques neste mes.</div>'
 
     return (
         "<table class='mini-table'>"
         "<thead>"
         "<tr>"
         "<th>Data</th>"
-        "<th class='num'>Pedidos</th>"
-        "<th class='num'>Itens</th>"
-        "<th class='num'>Fornecedores</th>"
-        "<th>Fornecedor principal</th>"
-        "<th>Grupo principal</th>"
-        "<th>Tipo principal</th>"
+        "<th class='num'>Notas</th>"
+        "<th class='num'>Volumes</th>"
+        "<th class='num'>Embarques</th>"
+        "<th class='num'>Transportadoras</th>"
         "</tr>"
         "</thead>"
         "<tbody>"
@@ -1034,7 +1028,7 @@ def render_tabela_mes(resumo):
     )
 
 
-def render_ranking(titulo, df_ranking, coluna_nome, sufixo):
+def render_ranking(titulo, df_ranking, coluna_nome, coluna_valor, sufixo):
     st.markdown(f'<div class="panel"><div class="panel-title">{escape(titulo)}</div>', unsafe_allow_html=True)
 
     if df_ranking.empty:
@@ -1042,10 +1036,10 @@ def render_ranking(titulo, df_ranking, coluna_nome, sufixo):
         st.markdown("</div>", unsafe_allow_html=True)
         return
 
-    maximo = max(float(df_ranking["Pedidos"].max()), 1)
+    maximo = max(float(df_ranking[coluna_valor].max()), 1)
 
     for indice, (_, linha) in enumerate(df_ranking.iterrows()):
-        largura = int((float(linha["Pedidos"]) / maximo) * 100)
+        largura = int((float(linha[coluna_valor]) / maximo) * 100)
         cor = CORES_GRUPO[indice % len(CORES_GRUPO)]
         nome = escape(str(linha[coluna_nome]))
 
@@ -1056,7 +1050,7 @@ def render_ranking(titulo, df_ranking, coluna_nome, sufixo):
                 <div class="progress-track">
                     <div class="progress-fill" style="width:{largura}%; background:{cor};"></div>
                 </div>
-                <div class="progress-value">{numero(linha["Pedidos"])} {sufixo}</div>
+                <div class="progress-value">{numero(linha[coluna_valor])} {sufixo}</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1065,22 +1059,32 @@ def render_ranking(titulo, df_ranking, coluna_nome, sufixo):
     st.markdown("</div>", unsafe_allow_html=True)
 
 
-def valor_top(df, coluna):
+def valor_top(df, coluna, coluna_valor="Numero", agregacao="nunique"):
     if df.empty or coluna not in df.columns:
         return "Sem dados", 0
 
-    ranking = df.groupby(coluna).agg(Pedidos=("Numero do Pedido", "nunique")).reset_index()
+    ranking = df.groupby(coluna).agg(Valor=(coluna_valor, agregacao)).reset_index()
     if ranking.empty:
         return "Sem dados", 0
 
-    linha = ranking.sort_values("Pedidos", ascending=False).iloc[0]
-    return str(linha[coluna]), int(linha["Pedidos"])
+    linha = ranking.sort_values("Valor", ascending=False).iloc[0]
+    return str(linha[coluna]), int(linha["Valor"])
 
 
 def render_leitura_operacional(df_mes):
-    grupo, pedidos_grupo = valor_top(df_mes, "Grupo")
-    tipo, pedidos_tipo = valor_top(df_mes, "Tipo")
-    fornecedor, pedidos_fornecedor = valor_top(df_mes, "Subgrupo")
+    transportadora, notas_transportadora = valor_top(df_mes, "Nome do transportadora")
+    dia_ranking = (
+        df_mes.groupby("Data Embarque")
+        .agg(Valor=("Quantidade", "sum"))
+        .reset_index()
+        .sort_values("Valor", ascending=False)
+    )
+    if dia_ranking.empty:
+        dia_volume, volumes_dia = "Sem dados", 0
+    else:
+        dia_volume = dia_ranking.iloc[0]["Data Embarque"].strftime("%d/%m/%Y")
+        volumes_dia = int(dia_ranking.iloc[0]["Valor"])
+    embarque, notas_embarque = valor_top(df_mes, "Numero do embarque")
 
     st.markdown(
         f"""
@@ -1088,19 +1092,19 @@ def render_leitura_operacional(df_mes):
             <div class="panel-title">Leitura operacional do mes</div>
             <div class="insight-grid">
                 <div class="insight">
-                    <div class="insight-label">Grupo dominante</div>
-                    <div class="insight-value" title="{escape(grupo)}">{escape(grupo)}</div>
-                    <div class="kpi-note">{numero(pedidos_grupo)} pedidos</div>
+                    <div class="insight-label">Transportadora dominante</div>
+                    <div class="insight-value" title="{escape(transportadora)}">{escape(transportadora)}</div>
+                    <div class="kpi-note">{numero(notas_transportadora)} notas</div>
                 </div>
                 <div class="insight">
-                    <div class="insight-label">Tipo dominante</div>
-                    <div class="insight-value" title="{escape(tipo)}">{escape(tipo)}</div>
-                    <div class="kpi-note">{numero(pedidos_tipo)} pedidos</div>
+                    <div class="insight-label">Dia com maior volume</div>
+                    <div class="insight-value" title="{escape(str(dia_volume))}">{escape(str(dia_volume))}</div>
+                    <div class="kpi-note">{numero(volumes_dia)} volumes</div>
                 </div>
                 <div class="insight">
-                    <div class="insight-label">Fornecedor mais recorrente</div>
-                    <div class="insight-value" title="{escape(fornecedor)}">{escape(fornecedor)}</div>
-                    <div class="kpi-note">{numero(pedidos_fornecedor)} pedidos</div>
+                    <div class="insight-label">Embarque com mais notas</div>
+                    <div class="insight-value" title="{escape(embarque)}">{escape(embarque)}</div>
+                    <div class="kpi-note">{numero(notas_embarque)} notas fiscais</div>
                 </div>
             </div>
         </div>
@@ -1111,91 +1115,96 @@ def render_leitura_operacional(df_mes):
 
 def render_analise_entrega(df, data_alerta):
     if data_alerta is None:
-        st.markdown('<div class="empty">Selecione uma proxima entrega para analisar.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="empty">Selecione um proximo embarque para analisar.</div>', unsafe_allow_html=True)
         return
 
-    df_alerta = df[df["Data Recebimento"] == data_alerta].copy()
+    df_alerta = df[df["Data Embarque"] == data_alerta].copy()
 
     if df_alerta.empty:
-        st.markdown('<div class="empty">Nao ha itens para a data selecionada.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="empty">Nao ha itens para o embarque selecionado.</div>', unsafe_allow_html=True)
         return
 
-    pedidos = df_alerta["Numero do Pedido"].nunique()
-    itens = df_alerta["Qtde"].sum()
-    fornecedores = df_alerta["Subgrupo"].nunique()
-    lista_fornecedores = sorted(df_alerta["Subgrupo"].dropna().astype(str).unique())
-    fornecedores_resumo = ", ".join(lista_fornecedores[:3])
-    if len(lista_fornecedores) > 3:
-        fornecedores_resumo += f" +{len(lista_fornecedores) - 3}"
+    notas = df_alerta["Numero"].nunique()
+    volumes = df_alerta["Quantidade"].sum()
+    embarques = df_alerta["Numero do embarque"].nunique()
+    transportadoras = df_alerta["Nome do transportadora"].nunique()
+    lista_transportadoras = sorted(df_alerta["Nome do transportadora"].dropna().astype(str).unique())
+    transportadoras_resumo = ", ".join(lista_transportadoras[:3])
+    if len(lista_transportadoras) > 3:
+        transportadoras_resumo += f" +{len(lista_transportadoras) - 3}"
 
     st.markdown(
         f"""
-        <div class="panel-title">Analise da entrega de {data_alerta.strftime("%d/%m/%Y")}</div>
-        <div class="insight-grid" style="margin-bottom: 12px;">
+        <div class="panel-title">Analise do embarque de {data_alerta.strftime("%d/%m/%Y")}</div>
+        <div class="insight-grid analysis-kpis">
             <div class="insight">
-                <div class="insight-label">Pedidos</div>
-                <div class="insight-value">{numero(pedidos)}</div>
+                <div class="insight-label">Notas fiscais</div>
+                <div class="insight-value">{numero(notas)}</div>
             </div>
             <div class="insight">
-                <div class="insight-label">Itens</div>
-                <div class="insight-value">{numero(itens)}</div>
+                <div class="insight-label">Volumes</div>
+                <div class="insight-value">{numero(volumes)}</div>
             </div>
             <div class="insight">
-                <div class="insight-label">Fornecedores</div>
-                <div class="insight-value" title="{escape(', '.join(lista_fornecedores))}">{escape(fornecedores_resumo)}</div>
-                <div class="kpi-note">{numero(fornecedores)} fornecedores</div>
+                <div class="insight-label">Embarques</div>
+                <div class="insight-value">{numero(embarques)}</div>
+            </div>
+            <div class="insight">
+                <div class="insight-label">Transportadoras</div>
+                <div class="insight-value" title="{escape(', '.join(lista_transportadoras))}">{escape(transportadoras_resumo)}</div>
+                <div class="kpi-note">{numero(transportadoras)} transportadoras</div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    grupo, categoria = st.columns(2)
+    transportadora, volumes_col = st.columns(2)
 
-    with grupo:
+    with transportadora:
         with st.container(border=True):
-            st.markdown('<div class="analysis-chart-title">Itens por Grupo</div>', unsafe_allow_html=True)
-            por_grupo = (
-                df_alerta.groupby("Grupo")
-                .agg(Itens=("Qtde", "sum"), Pedidos=("Numero do Pedido", "nunique"))
+            st.markdown('<div class="analysis-chart-title">Notas Fiscais por Transportadora</div>', unsafe_allow_html=True)
+            por_transportadora = (
+                df_alerta.groupby("Nome do transportadora")
+                .agg(Notas=("Numero", "nunique"))
                 .reset_index()
-                .sort_values("Itens", ascending=False)
+                .sort_values("Notas", ascending=False)
             )
-            fig_grupo = px.pie(
-                por_grupo,
-                names="Grupo",
-                values="Itens",
+            fig_transportadora = px.pie(
+                por_transportadora,
+                names="Nome do transportadora",
+                values="Notas",
                 hole=.55,
                 color_discrete_sequence=PALETA_PLOTLY,
             )
-            fig_grupo = ajustar_pizza(fig_grupo)
-            fig_grupo.update_traces(hovertemplate="<b>%{label}</b><br>Itens: %{value}<extra></extra>")
+            fig_transportadora = ajustar_pizza(fig_transportadora)
+            fig_transportadora.update_traces(hovertemplate="<b>%{label}</b><br>Notas fiscais: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_grupo, altura=390, legenda=True),
+                estilizar_grafico(fig_transportadora, altura=390, legenda=True),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
 
-    with categoria:
+    with volumes_col:
         with st.container(border=True):
-            st.markdown('<div class="analysis-chart-title">Itens por Categoria</div>', unsafe_allow_html=True)
-            por_categoria = (
-                df_alerta.groupby("Categoria")
-                .agg(Itens=("Qtde", "sum"), Pedidos=("Numero do Pedido", "nunique"))
+            st.markdown('<div class="analysis-chart-title">Volumes por Transportadora</div>', unsafe_allow_html=True)
+            por_volume = (
+                df_alerta.groupby("Nome do transportadora")
+                .agg(Volumes=("Quantidade", "sum"))
                 .reset_index()
-                .sort_values("Itens", ascending=False)
+                .sort_values("Volumes", ascending=False)
             )
-            fig_categoria = px.pie(
-                por_categoria,
-                names="Categoria",
-                values="Itens",
+            fig_volume = px.pie(
+                por_volume,
+                names="Nome do transportadora",
+                values="Volumes",
                 hole=.55,
                 color_discrete_sequence=["#f97316", "#2563eb", "#10b981", "#8b5cf6", "#64748b"],
             )
-            fig_categoria = ajustar_pizza(fig_categoria)
-            fig_categoria.update_traces(hovertemplate="<b>%{label}</b><br>Itens: %{value}<extra></extra>")
+            fig_volume = ajustar_pizza(fig_volume)
+            fig_volume.update_traces(hovertemplate="<b>%{label}</b><br>Volumes: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_categoria, altura=390, legenda=True),
+                estilizar_grafico(fig_volume, altura=390, legenda=True),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -1235,7 +1244,7 @@ def estilizar_grafico(fig, altura=282, legenda=False):
     return fig
 
 
-df = preparar_dados(carregar_dados())
+df = preparar_dados(carregar_embarques())
 logo_branco = base64.b64encode(Path("Logo Branco.bmp").read_bytes()).decode("utf-8")
 logo_preto = base64.b64encode(Path("logo preto goper.png").read_bytes()).decode("utf-8")
 
@@ -1243,8 +1252,8 @@ st.markdown(
     f"""
     <div class="page-head">
         <div class="page-title">
-            <h1>Recebimentos</h1>
-            <p>Acompanhe os recebimentos previstos por data, fornecedor e grupo operacional.</p>
+            <h1>Embarques Programados</h1>
+            <p>Acompanhe as saidas previstas por data, transportadora e volume operacional.</p>
         </div>
         <div class="page-logos">
             <img src="data:image/bmp;base64,{logo_branco}" alt="Trendx">
@@ -1256,24 +1265,24 @@ st.markdown(
 )
 
 if df.empty:
-    st.markdown('<div class="empty">Nao ha datas validas na coluna Data Entrega da aba Pedidos.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="empty">Nao ha datas validas na coluna Data da aba Embarques.</div>', unsafe_allow_html=True)
     st.stop()
 
-meses = sorted(df["Data Entrega"].dt.to_period("M").unique())
+meses = sorted(df["Data"].dt.to_period("M").unique())
 mes_atual = pd.Timestamp.today().to_period("M")
 idx_padrao = meses.index(mes_atual) if mes_atual in meses else len(meses) - 1
 
-if "cronograma_mes_idx" not in st.session_state:
-    st.session_state.cronograma_mes_idx = idx_padrao
+if "embarque_mes_idx" not in st.session_state:
+    st.session_state.embarque_mes_idx = idx_padrao
 
-mes_selecionado = meses[st.session_state.cronograma_mes_idx]
+mes_selecionado = meses[st.session_state.embarque_mes_idx]
 
 nav_1, nav_2, nav_3, nav_4 = st.columns([.55, 3.1, .55, .8])
 
 with nav_1:
     st.markdown('<div class="nav-button">', unsafe_allow_html=True)
-    if st.button("‹", use_container_width=True, disabled=st.session_state.cronograma_mes_idx <= 0):
-        st.session_state.cronograma_mes_idx -= 1
+    if st.button("‹", use_container_width=True, disabled=st.session_state.embarque_mes_idx <= 0):
+        st.session_state.embarque_mes_idx -= 1
         st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1282,8 +1291,8 @@ with nav_2:
 
 with nav_3:
     st.markdown('<div class="nav-button">', unsafe_allow_html=True)
-    if st.button("›", use_container_width=True, disabled=st.session_state.cronograma_mes_idx >= len(meses) - 1):
-        st.session_state.cronograma_mes_idx += 1
+    if st.button("›", use_container_width=True, disabled=st.session_state.embarque_mes_idx >= len(meses) - 1):
+        st.session_state.embarque_mes_idx += 1
         st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1294,19 +1303,19 @@ with nav_4:
         st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
-df_mes = df[df["Data Entrega"].dt.to_period("M") == mes_selecionado].copy()
+df_mes = df[df["Data"].dt.to_period("M") == mes_selecionado].copy()
 resumo_mes = resumo_por_data(df_mes)
 
 k1, k2, k3, k4 = st.columns(4)
 
 with k1:
-    render_kpi("Pedidos do Mes", df_mes["Numero do Pedido"].nunique(), "Total de pedidos", "▤", "blue")
+    render_kpi("Notas Fiscais", df_mes["Numero"].nunique(), "Notas fiscais diferentes", "NF", "blue")
 with k2:
-    render_kpi("Itens do Mes", df_mes["Qtde"].sum(), "Soma das quantidades", "□", "green")
+    render_kpi("Volumes", df_mes["Quantidade"].sum(), "Soma das quantidades", "V", "green")
 with k3:
-    render_kpi("Fornecedores", df_mes["Subgrupo"].nunique(), "Fornecedores diferentes", "●", "orange")
+    render_kpi("Embarques", df_mes["Numero do embarque"].nunique(), "Embarques diferentes", "E", "orange")
 with k4:
-    render_kpi("Dias com Entrega", df_mes["Data Recebimento"].nunique(), "Dias no mes", "▣", "purple")
+    render_kpi("Transportadoras", df_mes["Nome do transportadora"].nunique(), "Transportadoras diferentes", "T", "purple")
 
 render_leitura_operacional(df_mes)
 
@@ -1316,91 +1325,89 @@ col_proximas, col_grafico = st.columns([1.05, 2.55], gap="medium")
 
 with col_proximas:
     with st.container(border=True):
-        render_proximas_entregas(proximas)
+        render_proximos_embarques(proximas)
 
 with col_grafico:
     with st.container(border=True):
         data_alerta = None
-        if "cronograma_data_alerta" in st.session_state:
-            data_alerta = pd.to_datetime(st.session_state.cronograma_data_alerta).date()
+        if "embarque_data_alerta" in st.session_state:
+            data_alerta = pd.to_datetime(st.session_state.embarque_data_alerta).date()
         render_analise_entrega(df, data_alerta)
 
 col_tabela, col_rank = st.columns([1.65, 1], gap="medium")
 
 with col_tabela:
-    st.markdown('<div class="panel"><div class="panel-title">Recebimentos do mes</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="panel"><div class="panel-title">Embarques do mes</div></div>', unsafe_allow_html=True)
     st.markdown(render_tabela_mes(resumo_mes), unsafe_allow_html=True)
 
     datas_disponiveis = ["Visao do mes"] + [
-        data.strftime("%d/%m/%Y") for data in resumo_mes["Data Recebimento"].tolist()
+        data.strftime("%d/%m/%Y") for data in resumo_mes["Data Embarque"].tolist()
     ]
-    data_label = st.selectbox("Detalhar data", datas_disponiveis)
+    data_label = st.selectbox("Detalhar embarque", datas_disponiveis)
 
 with col_rank:
-    aba_fornecedor, aba_grupo, aba_tipo = st.tabs(["Fornecedores", "Grupos", "Tipos"])
+    aba_transportadora, aba_embarque, aba_volume = st.tabs(["Transportadoras", "Embarques", "Volumes"])
 
-    with aba_fornecedor:
-        ranking_fornecedor = (
-            df_mes.groupby("Subgrupo")
-            .agg(Pedidos=("Numero do Pedido", "nunique"), Itens=("Qtde", "sum"))
+    with aba_transportadora:
+        ranking_transportadora = (
+            df_mes.groupby("Nome do transportadora")
+            .agg(Notas=("Numero", "nunique"), Volumes=("Quantidade", "sum"))
             .reset_index()
-            .sort_values("Pedidos", ascending=False)
+            .sort_values("Notas", ascending=False)
             .head(6)
         )
-        render_ranking("Top fornecedores do mes", ranking_fornecedor, "Subgrupo", "ped.")
+        render_ranking("Top transportadoras do mes", ranking_transportadora, "Nome do transportadora", "Notas", "notas")
 
-    with aba_grupo:
-        ranking_grupo = (
-            df_mes.groupby("Grupo")
-            .agg(Pedidos=("Numero do Pedido", "nunique"), Itens=("Qtde", "sum"))
+    with aba_embarque:
+        ranking_embarque = (
+            df_mes.groupby("Numero do embarque")
+            .agg(Notas=("Numero", "nunique"), Volumes=("Quantidade", "sum"))
             .reset_index()
-            .sort_values("Pedidos", ascending=False)
+            .sort_values("Notas", ascending=False)
             .head(6)
         )
-        render_ranking("Distribuicao por grupo", ranking_grupo, "Grupo", "ped.")
+        render_ranking("Embarques por notas fiscais", ranking_embarque, "Numero do embarque", "Notas", "notas")
 
-    with aba_tipo:
-        ranking_tipo = (
-            df_mes.groupby("Tipo")
-            .agg(Pedidos=("Numero do Pedido", "nunique"), Itens=("Qtde", "sum"))
+    with aba_volume:
+        ranking_volume = (
+            df_mes.groupby("Nome do transportadora")
+            .agg(Volumes=("Quantidade", "sum"), Notas=("Numero", "nunique"))
             .reset_index()
-            .sort_values("Pedidos", ascending=False)
+            .sort_values("Volumes", ascending=False)
             .head(6)
         )
-        render_ranking("Distribuicao por tipo", ranking_tipo, "Tipo", "ped.")
+        render_ranking("Volumes por transportadora", ranking_volume, "Nome do transportadora", "Volumes", "vol.")
 
 if data_label != "Visao do mes":
     data_detalhe = pd.to_datetime(data_label, dayfirst=True).date()
-    df_detalhe = df_mes[df_mes["Data Recebimento"] == data_detalhe].copy()
-    titulo = f"Recebimentos detalhados de {data_label}"
+    df_detalhe = df_mes[df_mes["Data Embarque"] == data_detalhe].copy()
+    titulo = f"Embarques detalhados de {data_label}"
 else:
     df_detalhe = df_mes.copy()
-    titulo = "Recebimentos detalhados do mes"
+    titulo = "Embarques detalhados do mes"
 
 colunas = [
-    "Numero do Pedido",
-    "Data Entrega",
-    "Subgrupo",
-    "Grupo",
+    "Data",
+    "Numero do embarque",
+    "Numero",
     "Codigo",
-    "Descricao",
-    "Qtde",
+    "Descrição",
+    "Quantidade",
+    "Nome do transportadora",
 ]
 colunas = [col for col in colunas if col in df_detalhe.columns]
 df_detalhe = df_detalhe[colunas].copy()
 
-for coluna_texto in ["Numero do Pedido", "Codigo"]:
+for coluna_texto in ["Numero do embarque", "Numero", "Codigo"]:
     if coluna_texto in df_detalhe.columns:
         df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype(str).str.strip()
 
-if "Data Entrega" in df_detalhe.columns:
-    df_detalhe["Data Entrega"] = df_detalhe["Data Entrega"].dt.strftime("%d/%m/%Y")
+if "Data" in df_detalhe.columns:
+    df_detalhe["Data"] = df_detalhe["Data"].dt.strftime("%d/%m/%Y")
 
 df_detalhe = df_detalhe.rename(
     columns={
-        "Numero do Pedido": "Pedido",
-        "Subgrupo": "Fornecedor",
-        "Descricao": "Descricao",
+        "Numero": "NF",
     }
 )
 
@@ -1411,7 +1418,8 @@ with st.expander(titulo, expanded=False):
         hide_index=True,
         height=360,
         column_config={
-            "Pedido": st.column_config.TextColumn("Pedido"),
+            "NF": st.column_config.TextColumn("NF"),
             "Codigo": st.column_config.TextColumn("Codigo"),
         },
     )
+

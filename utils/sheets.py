@@ -37,3 +37,19 @@ def carregar_dados():
     dados = aba.get_all_records()
 
     return pd.DataFrame(dados)
+
+
+@st.cache_data(ttl=300)
+def carregar_embarques():
+
+    gc = conectar()
+
+    planilha = gc.open_by_key(
+        "1JU-8v_mxydxgDFwWg_aSURHBeM0PyOQPkUBe-LqitXk"
+    )
+
+    aba = planilha.worksheet("Embarques")
+
+    dados = aba.get_all_records()
+
+    return pd.DataFrame(dados)
