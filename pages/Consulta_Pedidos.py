@@ -494,6 +494,9 @@ if pesquisar:
         ]
     ]
 
+    for coluna_texto in ["Numero do Pedido", "Codigo"]:
+        resultado[coluna_texto] = resultado[coluna_texto].fillna("").astype("string")
+
     st.divider()
 
     st.caption(
@@ -504,5 +507,9 @@ if pesquisar:
         resultado,
         use_container_width=True,
         hide_index=True,
-        height=800
+        height=800,
+        column_config={
+            "Numero do Pedido": st.column_config.TextColumn("Numero do Pedido"),
+            "Codigo": st.column_config.TextColumn("Codigo"),
+        },
     )

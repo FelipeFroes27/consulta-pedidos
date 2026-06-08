@@ -706,7 +706,7 @@ st.markdown(
     .next-card.soon {background: #eff6ff; border-color: #60a5fa;}
     .next-card.attention {background: #fff7ed; border-color: #fb923c;}
     .next-card.selected {outline: 2px solid #000000;}
-    .next-icon {background: #2563eb; border: 0; color: #ffffff;}
+    .next-icon {background: #2563eb; border: 2px solid #000000; color: #ffffff;}
     .next-card.today .next-icon {background: #16a34a;}
     .next-card.attention .next-icon {background: #f97316;}
 
@@ -776,7 +776,7 @@ st.markdown(
     .next-icon {
         width: 32px;
         height: 32px;
-        border: 0;
+        border: 2px solid #000000;
         color: #ffffff;
         font-size: 15px;
     }
@@ -1450,6 +1450,10 @@ df_detalhe = df_detalhe.rename(
         "Descricao": "Descricao",
     }
 )
+
+for coluna_texto in ["Pedido", "Codigo"]:
+    if coluna_texto in df_detalhe.columns:
+        df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype("string")
 
 with st.expander(titulo, expanded=False):
     st.dataframe(
