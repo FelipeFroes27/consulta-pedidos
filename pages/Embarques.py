@@ -1047,6 +1047,44 @@ st.markdown(
     .analysis-chart-title {
         margin-bottom: 8px !important;
     }
+
+    .click-legend {
+        margin-top: -8px !important;
+        padding: 0 42px 4px 42px !important;
+    }
+
+    .click-legend div[data-testid="column"] {
+        display: flex;
+        align-items: center;
+    }
+
+    .legend-swatch {
+        width: 13px;
+        height: 13px;
+        border: 2px solid #000000;
+        border-radius: 2px;
+        margin-top: 8px;
+    }
+
+    .click-legend button {
+        min-height: 26px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        color: #101828 !important;
+        justify-content: flex-start !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        box-shadow: none !important;
+        text-align: left !important;
+    }
+
+    .click-legend button:hover {
+        color: #000000 !important;
+        text-decoration: underline !important;
+        background: transparent !important;
+        border: 0 !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1434,7 +1472,7 @@ def render_analise_entrega(df, data_alerta):
             fig_transportadora = ajustar_pizza(fig_transportadora)
             fig_transportadora.update_traces(hovertemplate="<b>%{label}</b><br>Notas fiscais: %{value}<extra></extra>")
             evento_transportadora = st.plotly_chart(
-                estilizar_grafico(fig_transportadora, altura=430, legenda=True, metrica="Notas fiscais"),
+                estilizar_grafico(fig_transportadora, altura=360, legenda=False, metrica="Notas fiscais"),
                 use_container_width=True,
                 config={"displayModeBar": False},
                 key="grafico_notas_transportadora",
@@ -1444,6 +1482,11 @@ def render_analise_entrega(df, data_alerta):
             transportadora_selecionada = obter_label_selecionado(evento_transportadora)
             if transportadora_selecionada:
                 st.session_state.embarque_transportadora_filtro = transportadora_selecionada
+            render_legenda_transportadora(
+                por_transportadora["Nome do transportadora"].tolist(),
+                PALETA_PLOTLY,
+                "legenda_notas_transportadora",
+            )
 
     with volumes_col:
         with st.container(border=True):
@@ -1464,7 +1507,7 @@ def render_analise_entrega(df, data_alerta):
             fig_volume = ajustar_pizza(fig_volume)
             fig_volume.update_traces(hovertemplate="<b>%{label}</b><br>Volumes: %{value}<extra></extra>")
             evento_volume = st.plotly_chart(
-                estilizar_grafico(fig_volume, altura=430, legenda=True, metrica="Volumes"),
+                estilizar_grafico(fig_volume, altura=360, legenda=False, metrica="Volumes"),
                 use_container_width=True,
                 config={"displayModeBar": False},
                 key="grafico_volumes_transportadora",
@@ -1474,6 +1517,11 @@ def render_analise_entrega(df, data_alerta):
             transportadora_selecionada = obter_label_selecionado(evento_volume)
             if transportadora_selecionada:
                 st.session_state.embarque_transportadora_filtro = transportadora_selecionada
+            render_legenda_transportadora(
+                por_volume["Nome do transportadora"].tolist(),
+                ["#f97316", "#2563eb", "#10b981", "#8b5cf6", "#64748b"],
+                "legenda_volumes_transportadora",
+            )
 
 
 def ajustar_pizza(fig):
@@ -1536,6 +1584,28 @@ def resolver_transportadora(df, valor):
                 return transportadora
 
     return None
+
+
+def render_legenda_transportadora(transportadoras, cores, prefixo):
+    st.markdown('<div class="click-legend">', unsafe_allow_html=True)
+    for indice, transportadora in enumerate(transportadoras):
+        cor = cores[indice % len(cores)]
+        selecionada = st.session_state.get("embarque_transportadora_filtro") == transportadora
+        col_cor, col_nome = st.columns([0.12, 0.88])
+        with col_cor:
+            st.markdown(
+                f'<div class="legend-swatch" style="background:{cor};"></div>',
+                unsafe_allow_html=True,
+            )
+        with col_nome:
+            label = encurtar_legenda(transportadora, 34)
+            if st.button(label, key=f"{prefixo}_{indice}", use_container_width=True):
+                if selecionada:
+                    st.session_state.embarque_transportadora_filtro = None
+                else:
+                    st.session_state.embarque_transportadora_filtro = transportadora
+                st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def encurtar_legenda(texto, limite=22):
