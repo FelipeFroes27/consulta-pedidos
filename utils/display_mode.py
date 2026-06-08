@@ -115,38 +115,38 @@ def _aplicar_layout_menu(menu_aberto):
         [data-testid="stHeaderActionElements"],
         [data-testid="stToolbar"],
         [data-testid="stStatusWidget"],
-        [data-testid="stDecoration"] {
+        [data-testid="stDecoration"] {{
             display: none !important;
             visibility: hidden !important;
             height: 0 !important;
             min-height: 0 !important;
             opacity: 0 !important;
             pointer-events: none !important;
-        }
+        }}
 
         #MainMenu,
-        footer {
+        footer {{
             visibility: hidden !important;
-        }
+        }}
 
         [data-testid="stSidebarCollapseButton"],
         [data-testid="collapsedControl"],
-        [data-testid="stSidebarCollapsedControl"] {
+        [data-testid="stSidebarCollapsedControl"] {{
             display: none !important;
             visibility: hidden !important;
-        }
+        }}
 
         {sidebar_css}
 
-        .st-key-menu_lateral_toggle {
+        .st-key-menu_lateral_toggle {{
             position: fixed !important;
             top: 0.75rem !important;
             left: {left} !important;
             z-index: 999999 !important;
             width: 82px !important;
-        }
+        }}
 
-        .st-key-menu_lateral_toggle button {
+        .st-key-menu_lateral_toggle button {{
             min-height: 38px !important;
             padding: 0 14px !important;
             border: 2px solid #000000 !important;
@@ -155,18 +155,18 @@ def _aplicar_layout_menu(menu_aberto):
             color: #000000 !important;
             font-weight: 700 !important;
             box-shadow: none !important;
-        }
+        }}
 
-        .st-key-menu_lateral_toggle button:hover {
+        .st-key-menu_lateral_toggle button:hover {{
             border-color: #000000 !important;
             color: #000000 !important;
             background: #f2f4f7 !important;
-        }
+        }}
 
         .block-container,
-        [data-testid="stMainBlockContainer"] {
+        [data-testid="stMainBlockContainer"] {{
             padding-top: 3.2rem !important;
-        }
+        }}
         </style>
         """,
         unsafe_allow_html=True,
