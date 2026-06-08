@@ -67,7 +67,7 @@ footer {
 .block-container,
 [data-testid="stMainBlockContainer"] {
     max-width: 1540px;
-    padding-top: 1.25rem;
+    padding-top: .25rem;
     padding-bottom: 1.25rem;
 }
 
@@ -503,10 +503,16 @@ if pesquisar:
         }
     )
 
+    st.session_state["consulta_resultado"] = resultado
+    st.session_state["consulta_total_resultados"] = len(resultado)
+
+if "consulta_resultado" in st.session_state:
+    resultado = st.session_state["consulta_resultado"]
+
     st.divider()
 
     st.caption(
-        f"{len(resultado)} registro(s) encontrado(s)"
+        f"{st.session_state.get('consulta_total_resultados', len(resultado))} registro(s) encontrado(s)"
     )
 
     st.dataframe(

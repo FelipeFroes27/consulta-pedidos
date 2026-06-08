@@ -89,6 +89,35 @@ st.markdown(
     }
 
     .page-head {
+        margin-top: -1.2rem !important;
+        margin-bottom: .35rem !important;
+    }
+
+    .page-title h1 {
+        margin-top: 0 !important;
+    }
+
+    .page-title p {
+        margin-top: 4px !important;
+    }
+
+    .month-title {
+        min-height: 42px !important;
+    }
+
+    .kpi-card {
+        min-height: 96px !important;
+    }
+
+    .next-card {
+        margin-bottom: 8px !important;
+    }
+
+    div[data-testid="stVerticalBlock"] {
+        gap: .75rem !important;
+    }
+
+    .page-head {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
@@ -828,7 +857,7 @@ st.markdown(
 
     .block-container,
     [data-testid="stMainBlockContainer"] {
-        padding-top: 1.75rem;
+        padding-top: .25rem;
     }
 
     div[data-testid="stVerticalBlock"] {

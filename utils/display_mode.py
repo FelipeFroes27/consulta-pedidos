@@ -219,7 +219,7 @@ def _aplicar_layout_menu(menu_aberto):
 
         .st-key-menu_lateral_toggle {{
             position: fixed !important;
-            top: 0.75rem !important;
+            top: 0.45rem !important;
             left: {left} !important;
             z-index: 999999 !important;
             width: 82px !important;
@@ -248,7 +248,7 @@ def _aplicar_layout_menu(menu_aberto):
             width: 100% !important;
             padding-left: 1.25rem !important;
             padding-right: 1.25rem !important;
-            padding-top: 3.2rem !important;
+            padding-top: 1.15rem !important;
         }}
         </style>
         """,
