@@ -1125,7 +1125,7 @@ st.markdown(
     .progress-row {
         grid-template-columns: minmax(82px, 1fr) 1.7fr 54px !important;
         gap: 8px !important;
-        margin: 8px 0 !important;
+        margin: 6px 0 !important;
     }
 
     .progress-name {
@@ -1133,7 +1133,7 @@ st.markdown(
     }
 
     .progress-track {
-        height: 8px !important;
+        height: 7px !important;
     }
 
     .progress-value {
@@ -1153,20 +1153,20 @@ st.markdown(
     }
 
     .page-head {
-        margin-top: 1.1rem !important;
-        margin-bottom: .3rem !important;
-        min-height: 64px !important;
+        margin-top: .85rem !important;
+        margin-bottom: .2rem !important;
+        min-height: 48px !important;
     }
 
     .page-title h1 {
-        font-size: 27px !important;
+        font-size: 24px !important;
         line-height: 1 !important;
         margin: 0 !important;
     }
 
     .page-title p {
-        margin: 3px 0 0 0 !important;
-        font-size: 13px !important;
+        margin: 2px 0 0 0 !important;
+        font-size: 12px !important;
     }
 
     .page-logos {
@@ -1174,7 +1174,7 @@ st.markdown(
     }
 
     .page-logos img {
-        max-height: 34px !important;
+        max-height: 28px !important;
     }
 
     div[data-testid="stVerticalBlock"],
@@ -1192,27 +1192,27 @@ st.markdown(
     }
 
     .month-title {
-        min-height: 38px !important;
-        font-size: 26px !important;
+        min-height: 32px !important;
+        font-size: 23px !important;
     }
 
     .nav-button .stButton > button,
     .refresh-button .stButton > button {
-        min-height: 38px !important;
+        min-height: 32px !important;
     }
 
     .kpi-card {
-        min-height: 88px !important;
-        padding: 10px 14px !important;
+        min-height: 70px !important;
+        padding: 8px 12px !important;
     }
 
     .kpi-icon {
-        width: 52px !important;
-        height: 52px !important;
+        width: 42px !important;
+        height: 42px !important;
     }
 
     .kpi-value {
-        font-size: 24px !important;
+        font-size: 21px !important;
         line-height: 1.05 !important;
     }
 
@@ -1222,7 +1222,7 @@ st.markdown(
     }
 
     .next-panel-title {
-        margin-bottom: 8px !important;
+        margin-bottom: 6px !important;
     }
 
     .next-card,
@@ -1231,8 +1231,8 @@ st.markdown(
     .next-card.soon,
     .next-card.safe,
     .next-card.selected {
-        min-height: 72px !important;
-        padding: 8px 10px !important;
+        min-height: 76px !important;
+        padding: 10px 12px !important;
         margin-bottom: var(--card-gap) !important;
     }
 
@@ -1241,8 +1241,8 @@ st.markdown(
     }
 
     .insight {
-        min-height: 78px !important;
-        padding: 10px 12px !important;
+        min-height: 62px !important;
+        padding: 8px 10px !important;
     }
     </style>
     """,
@@ -1366,7 +1366,7 @@ def label_prazo(data_recebimento):
     return f"Em {dias} dias", "safe"
 
 
-def proximas_datas(df, limite=5):
+def proximas_datas(df, limite=3):
     hoje = pd.Timestamp.today().normalize().date()
     return resumo_por_data(df[df["Data Recebimento"] >= hoje]).head(limite)
 
@@ -1635,7 +1635,7 @@ def render_analise_entrega(df, data_alerta):
             fig_grupo = ajustar_pizza(fig_grupo)
             fig_grupo.update_traces(hovertemplate="<b>%{label}</b><br>Itens: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_grupo, altura=392, legenda=True),
+                estilizar_grafico(fig_grupo, altura=348, legenda=True),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -1659,7 +1659,7 @@ def render_analise_entrega(df, data_alerta):
             fig_categoria = ajustar_pizza(fig_categoria)
             fig_categoria.update_traces(hovertemplate="<b>%{label}</b><br>Itens: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_categoria, altura=392, legenda=True),
+                estilizar_grafico(fig_categoria, altura=348, legenda=True),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -1697,7 +1697,7 @@ def estilizar_grafico(fig, altura=282, legenda=False):
 
     fig.update_layout(
         height=altura,
-        margin=dict(l=8, r=8, t=4, b=104),
+        margin=dict(l=8, r=8, t=2, b=88),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
         font=dict(family="Arial", size=11, color="#475467"),
@@ -1705,7 +1705,7 @@ def estilizar_grafico(fig, altura=282, legenda=False):
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.14,
+            y=-0.11,
             xanchor="center",
             x=0.5,
             font=dict(size=10, color="#101828"),
