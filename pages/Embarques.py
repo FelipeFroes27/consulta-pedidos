@@ -1077,6 +1077,29 @@ st.markdown(
         margin-bottom: 8px !important;
     }
 
+    div[data-testid="stTabs"] [role="tab"] {
+        padding: 6px 8px !important;
+        font-size: 12px !important;
+    }
+
+    .progress-row {
+        grid-template-columns: minmax(82px, 1fr) 1.7fr 54px !important;
+        gap: 8px !important;
+        margin: 8px 0 !important;
+    }
+
+    .progress-name {
+        font-size: 11px !important;
+    }
+
+    .progress-track {
+        height: 8px !important;
+    }
+
+    .progress-value {
+        font-size: 11px !important;
+    }
+
     /* Compactacao final para telas grandes */
     :root {
         /* Padrao fixo entre cards: nao reduzir em ajustes de compactacao. */
@@ -1155,7 +1178,7 @@ st.markdown(
 
     div[data-testid="stVerticalBlockBorderWrapper"]:has(.next-panel-title),
     div[data-testid="stVerticalBlockBorderWrapper"]:has(.analysis-chart-title) {
-        padding: 12px !important;
+        padding: 10px !important;
     }
 
     .next-panel-title {
@@ -1448,6 +1471,40 @@ def render_ranking(titulo, df_ranking, coluna_nome, coluna_valor, sufixo):
     st.markdown("</div>", unsafe_allow_html=True)
 
 
+def render_rankings_mes(df_mes):
+    aba_transportadora, aba_embarque, aba_volume = st.tabs(["Transportadoras", "Embarques", "Volumes"])
+
+    with aba_transportadora:
+        ranking_transportadora = (
+            df_mes.groupby("Nome do transportadora")
+            .agg(Notas=("Numero", "nunique"), Volumes=("Quantidade", "sum"))
+            .reset_index()
+            .sort_values("Notas", ascending=False)
+            .head(4)
+        )
+        render_ranking("Top transportadoras do mes", ranking_transportadora, "Nome do transportadora", "Notas", "notas")
+
+    with aba_embarque:
+        ranking_embarque = (
+            df_mes.groupby("Numero do embarque")
+            .agg(Notas=("Numero", "nunique"), Volumes=("Quantidade", "sum"))
+            .reset_index()
+            .sort_values("Notas", ascending=False)
+            .head(4)
+        )
+        render_ranking("Embarques por notas fiscais", ranking_embarque, "Numero do embarque", "Notas", "notas")
+
+    with aba_volume:
+        ranking_volume = (
+            df_mes.groupby("Nome do transportadora")
+            .agg(Volumes=("Quantidade", "sum"), Notas=("Numero", "nunique"))
+            .reset_index()
+            .sort_values("Volumes", ascending=False)
+            .head(4)
+        )
+        render_ranking("Volumes por transportadora", ranking_volume, "Nome do transportadora", "Volumes", "vol.")
+
+
 def valor_top(df, coluna, coluna_valor="Numero", agregacao="nunique"):
     if df.empty or coluna not in df.columns:
         return "Sem dados", 0
@@ -1569,7 +1626,7 @@ def render_analise_entrega(df, data_alerta):
             fig_transportadora = ajustar_pizza(fig_transportadora)
             fig_transportadora.update_traces(hovertemplate="<b>%{label}</b><br>Notas fiscais: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_transportadora, altura=430, legenda=True, metrica="Notas fiscais"),
+                estilizar_grafico(fig_transportadora, altura=392, legenda=True, metrica="Notas fiscais"),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -1593,7 +1650,7 @@ def render_analise_entrega(df, data_alerta):
             fig_volume = ajustar_pizza(fig_volume)
             fig_volume.update_traces(hovertemplate="<b>%{label}</b><br>Volumes: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_volume, altura=430, legenda=True, metrica="Volumes"),
+                estilizar_grafico(fig_volume, altura=392, legenda=True, metrica="Volumes"),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -1631,7 +1688,7 @@ def estilizar_grafico(fig, altura=282, legenda=False, metrica="Valor"):
 
     fig.update_layout(
         height=altura,
-        margin=dict(l=8, r=8, t=4, b=128),
+        margin=dict(l=8, r=8, t=4, b=104),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
         font=dict(family="Arial", size=11, color="#475467"),
@@ -1639,7 +1696,7 @@ def estilizar_grafico(fig, altura=282, legenda=False, metrica="Valor"):
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.18,
+            y=-0.14,
             xanchor="center",
             x=0.5,
             font=dict(size=10, color="#101828"),
@@ -1735,6 +1792,8 @@ col_proximas, col_grafico = st.columns([1.05, 2.55], gap="medium")
 with col_proximas:
     with st.container(border=True):
         render_proximos_embarques(proximas)
+    with st.container(border=True):
+        render_rankings_mes(df_mes)
 
 with col_grafico:
     with st.container(border=True):
@@ -1751,9 +1810,9 @@ else:
     df_detalhe = df_mes.copy()
     titulo_detalhe = "Embarques detalhados"
 
-col_rank, col_detalhe = st.columns([1, 1.65], gap="medium")
+col_detalhe = st.container()
 
-with col_rank:
+if False:
     aba_transportadora, aba_embarque, aba_volume = st.tabs(["Transportadoras", "Embarques", "Volumes"])
 
     with aba_transportadora:

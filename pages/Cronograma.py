@@ -1117,6 +1117,29 @@ st.markdown(
         margin-bottom: 8px !important;
     }
 
+    div[data-testid="stTabs"] [role="tab"] {
+        padding: 6px 8px !important;
+        font-size: 12px !important;
+    }
+
+    .progress-row {
+        grid-template-columns: minmax(82px, 1fr) 1.7fr 54px !important;
+        gap: 8px !important;
+        margin: 8px 0 !important;
+    }
+
+    .progress-name {
+        font-size: 11px !important;
+    }
+
+    .progress-track {
+        height: 8px !important;
+    }
+
+    .progress-value {
+        font-size: 11px !important;
+    }
+
     /* Compactacao final para telas grandes */
     :root {
         /* Padrao fixo entre cards: nao reduzir em ajustes de compactacao. */
@@ -1195,7 +1218,7 @@ st.markdown(
 
     div[data-testid="stVerticalBlockBorderWrapper"]:has(.next-panel-title),
     div[data-testid="stVerticalBlockBorderWrapper"]:has(.analysis-chart-title) {
-        padding: 12px !important;
+        padding: 10px !important;
     }
 
     .next-panel-title {
@@ -1472,6 +1495,40 @@ def render_ranking(titulo, df_ranking, coluna_nome, sufixo):
     st.markdown("</div>", unsafe_allow_html=True)
 
 
+def render_rankings_mes(df_mes):
+    aba_fornecedor, aba_grupo, aba_tipo = st.tabs(["Fornecedores", "Grupos", "Tipos"])
+
+    with aba_fornecedor:
+        ranking_fornecedor = (
+            df_mes.groupby("Subgrupo")
+            .agg(Pedidos=("Numero do Pedido", "nunique"), Itens=("Qtde", "sum"))
+            .reset_index()
+            .sort_values("Pedidos", ascending=False)
+            .head(4)
+        )
+        render_ranking("Top fornecedores do mes", ranking_fornecedor, "Subgrupo", "ped.")
+
+    with aba_grupo:
+        ranking_grupo = (
+            df_mes.groupby("Grupo")
+            .agg(Pedidos=("Numero do Pedido", "nunique"), Itens=("Qtde", "sum"))
+            .reset_index()
+            .sort_values("Pedidos", ascending=False)
+            .head(4)
+        )
+        render_ranking("Distribuicao por grupo", ranking_grupo, "Grupo", "ped.")
+
+    with aba_tipo:
+        ranking_tipo = (
+            df_mes.groupby("Tipo")
+            .agg(Pedidos=("Numero do Pedido", "nunique"), Itens=("Qtde", "sum"))
+            .reset_index()
+            .sort_values("Pedidos", ascending=False)
+            .head(4)
+        )
+        render_ranking("Distribuicao por tipo", ranking_tipo, "Tipo", "ped.")
+
+
 def valor_top(df, coluna):
     if df.empty or coluna not in df.columns:
         return "Sem dados", 0
@@ -1578,7 +1635,7 @@ def render_analise_entrega(df, data_alerta):
             fig_grupo = ajustar_pizza(fig_grupo)
             fig_grupo.update_traces(hovertemplate="<b>%{label}</b><br>Itens: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_grupo, altura=430, legenda=True),
+                estilizar_grafico(fig_grupo, altura=392, legenda=True),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -1602,7 +1659,7 @@ def render_analise_entrega(df, data_alerta):
             fig_categoria = ajustar_pizza(fig_categoria)
             fig_categoria.update_traces(hovertemplate="<b>%{label}</b><br>Itens: %{value}<extra></extra>")
             st.plotly_chart(
-                estilizar_grafico(fig_categoria, altura=430, legenda=True),
+                estilizar_grafico(fig_categoria, altura=392, legenda=True),
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -1640,7 +1697,7 @@ def estilizar_grafico(fig, altura=282, legenda=False):
 
     fig.update_layout(
         height=altura,
-        margin=dict(l=8, r=8, t=4, b=128),
+        margin=dict(l=8, r=8, t=4, b=104),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
         font=dict(family="Arial", size=11, color="#475467"),
@@ -1648,7 +1705,7 @@ def estilizar_grafico(fig, altura=282, legenda=False):
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.18,
+            y=-0.14,
             xanchor="center",
             x=0.5,
             font=dict(size=10, color="#101828"),
@@ -1744,6 +1801,8 @@ col_proximas, col_grafico = st.columns([1.05, 2.55], gap="medium")
 with col_proximas:
     with st.container(border=True):
         render_proximas_entregas(proximas)
+    with st.container(border=True):
+        render_rankings_mes(df_mes)
 
 with col_grafico:
     with st.container(border=True):
@@ -1760,9 +1819,9 @@ else:
     df_detalhe = df_mes.copy()
     titulo_detalhe = "Recebimentos detalhados"
 
-col_rank, col_detalhe = st.columns([1, 1.65], gap="medium")
+col_detalhe = st.container()
 
-with col_rank:
+if False:
     aba_fornecedor, aba_grupo, aba_tipo = st.tabs(["Fornecedores", "Grupos", "Tipos"])
 
     with aba_fornecedor:
