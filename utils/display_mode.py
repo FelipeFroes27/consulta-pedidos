@@ -1,13 +1,12 @@
 import time
 
 import streamlit as st
-import streamlit.components.v1 as components
 from streamlit_autorefresh import st_autorefresh
 
 
 INATIVIDADE_SEGUNDOS = 2 * 60
 TROCA_TELA_SEGUNDOS = 60
-REFRESH_MS = 5 * 1000
+REFRESH_MS = 30 * 1000
 MENU_ABERTO_PADRAO = True
 
 
@@ -24,8 +23,6 @@ def render_menu_lateral():
 
 
 def ativar_modo_exibicao(pagina_atual):
-    _registrar_atividade_do_navegador()
-
     contador = st_autorefresh(
         interval=REFRESH_MS,
         key="modo_exibicao_refresh",
@@ -49,10 +46,6 @@ def ativar_modo_exibicao(pagina_atual):
 
     if "modo_exibicao_ultima_atividade" not in st.session_state:
         st.session_state.modo_exibicao_ultima_atividade = agora
-
-    atividade_navegador = _atividade_navegador_recente()
-    if atividade_navegador is not None:
-        _registrar_atividade(atividade_navegador)
 
     if not foi_refresh_automatico:
         _registrar_atividade(agora)
@@ -86,57 +79,6 @@ def _registrar_atividade(agora):
     st.session_state.modo_exibicao_ativo = False
     st.session_state.modo_exibicao_navegando = False
     st.session_state.modo_exibicao_proxima_troca = None
-
-
-def _registrar_atividade_do_navegador():
-    components.html(
-        """
-        <script>
-        (() => {
-            const THROTTLE_MS = 1000;
-            let last = 0;
-
-            const markActivity = () => {
-                const now = Date.now();
-                if (now - last < THROTTLE_MS) return;
-                last = now;
-
-                const url = new URL(window.parent.location.href);
-                url.searchParams.set("_atividade", String(now));
-                window.parent.history.replaceState(null, "", url.toString());
-            };
-
-            const events = ["click", "mousemove", "keydown", "scroll", "wheel", "touchstart", "touchmove"];
-            events.forEach((eventName) => {
-                window.parent.addEventListener(eventName, markActivity, { passive: true });
-                window.parent.document.addEventListener(eventName, markActivity, { passive: true });
-            });
-        })();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
-
-def _atividade_navegador_recente():
-    valor = st.query_params.get("_atividade")
-    if isinstance(valor, list):
-        valor = valor[-1] if valor else None
-    if not valor:
-        return None
-
-    try:
-        atividade_ms = int(valor)
-    except (TypeError, ValueError):
-        return None
-
-    ultima_lida = st.session_state.get("modo_exibicao_atividade_navegador_lida")
-    if ultima_lida is not None and atividade_ms <= ultima_lida:
-        return None
-
-    st.session_state.modo_exibicao_atividade_navegador_lida = atividade_ms
-    return atividade_ms / 1000
 
 
 def _ocultar_sidebar():
