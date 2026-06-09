@@ -1078,6 +1078,11 @@ st.markdown(
     }
 
     /* Compactacao final para telas grandes */
+    :root {
+        /* Padrao fixo entre cards: nao reduzir em ajustes de compactacao. */
+        --card-gap: 0.5cm;
+    }
+
     .block-container,
     [data-testid="stMainBlockContainer"] {
         padding-top: .25rem !important;
@@ -1109,8 +1114,18 @@ st.markdown(
         max-height: 34px !important;
     }
 
-    div[data-testid="stVerticalBlock"] {
-        gap: .45rem !important;
+    div[data-testid="stVerticalBlock"],
+    div[data-testid="stHorizontalBlock"] {
+        gap: var(--card-gap) !important;
+    }
+
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        margin-bottom: var(--card-gap) !important;
+    }
+
+    div[data-testid="column"] {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
 
     .month-title {
@@ -1155,11 +1170,11 @@ st.markdown(
     .next-card.selected {
         min-height: 72px !important;
         padding: 8px 10px !important;
-        margin-bottom: 7px !important;
+        margin-bottom: var(--card-gap) !important;
     }
 
     .analysis-kpis {
-        margin-bottom: 6px !important;
+        margin-bottom: var(--card-gap) !important;
     }
 
     .insight {
