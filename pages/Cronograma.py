@@ -1120,7 +1120,7 @@ st.markdown(
     /* Compactacao final para telas grandes */
     :root {
         /* Padrao fixo entre cards: nao reduzir em ajustes de compactacao. */
-        --card-gap: 0.5cm;
+        --card-gap: 0.3cm;
     }
 
     .block-container,
