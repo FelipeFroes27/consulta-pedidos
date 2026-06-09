@@ -1077,6 +1077,96 @@ st.markdown(
         margin-bottom: 8px !important;
     }
 
+    /* Compactacao final para telas grandes */
+    .block-container,
+    [data-testid="stMainBlockContainer"] {
+        padding-top: 0 !important;
+        padding-bottom: .5rem !important;
+    }
+
+    .page-head {
+        margin-top: -4.6rem !important;
+        margin-bottom: .15rem !important;
+        min-height: 56px !important;
+    }
+
+    .page-title h1 {
+        font-size: 27px !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+    }
+
+    .page-title p {
+        margin: 3px 0 0 0 !important;
+        font-size: 13px !important;
+    }
+
+    .page-logos {
+        margin-top: 0 !important;
+    }
+
+    .page-logos img {
+        max-height: 30px !important;
+    }
+
+    div[data-testid="stVerticalBlock"] {
+        gap: .45rem !important;
+    }
+
+    .month-title {
+        min-height: 38px !important;
+        font-size: 26px !important;
+    }
+
+    .nav-button .stButton > button,
+    .refresh-button .stButton > button {
+        min-height: 38px !important;
+    }
+
+    .kpi-card {
+        min-height: 88px !important;
+        padding: 10px 14px !important;
+    }
+
+    .kpi-icon {
+        width: 52px !important;
+        height: 52px !important;
+    }
+
+    .kpi-value {
+        font-size: 24px !important;
+        line-height: 1.05 !important;
+    }
+
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.next-panel-title),
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.analysis-chart-title) {
+        padding: 12px !important;
+    }
+
+    .next-panel-title {
+        margin-bottom: 8px !important;
+    }
+
+    .next-card,
+    .next-card.danger,
+    .next-card.warning,
+    .next-card.soon,
+    .next-card.safe,
+    .next-card.selected {
+        min-height: 72px !important;
+        padding: 8px 10px !important;
+        margin-bottom: 7px !important;
+    }
+
+    .analysis-kpis {
+        margin-bottom: 6px !important;
+    }
+
+    .insight {
+        min-height: 78px !important;
+        padding: 10px 12px !important;
+    }
+
     </style>
     """,
     unsafe_allow_html=True,

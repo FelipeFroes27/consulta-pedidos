@@ -219,14 +219,17 @@ def _aplicar_layout_menu(menu_aberto):
 
         .st-key-menu_lateral_toggle {{
             position: fixed !important;
-            top: 0.45rem !important;
+            top: 0.25rem !important;
             left: {left} !important;
             z-index: 999999 !important;
             width: 82px !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }}
 
         .st-key-menu_lateral_toggle button {{
-            min-height: 38px !important;
+            min-height: 34px !important;
             padding: 0 14px !important;
             border: 2px solid #000000 !important;
             border-radius: 8px !important;
@@ -248,7 +251,17 @@ def _aplicar_layout_menu(menu_aberto):
             width: 100% !important;
             padding-left: 1.25rem !important;
             padding-right: 1.25rem !important;
-            padding-top: 1.15rem !important;
+            padding-top: 0 !important;
+        }}
+
+        div[data-testid="stVerticalBlock"]:has(.st-key-menu_lateral_toggle),
+        div[data-testid="stElementContainer"]:has(.st-key-menu_lateral_toggle),
+        div[data-testid="stButton"]:has(#menu_lateral_toggle) {{
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
         }}
         </style>
         """,
