@@ -1080,14 +1080,14 @@ st.markdown(
     /* Compactacao final para telas grandes */
     .block-container,
     [data-testid="stMainBlockContainer"] {
-        padding-top: 0 !important;
+        padding-top: .25rem !important;
         padding-bottom: .5rem !important;
     }
 
     .page-head {
-        margin-top: -4.6rem !important;
-        margin-bottom: .15rem !important;
-        min-height: 56px !important;
+        margin-top: 1.1rem !important;
+        margin-bottom: .3rem !important;
+        min-height: 64px !important;
     }
 
     .page-title h1 {
@@ -1106,7 +1106,7 @@ st.markdown(
     }
 
     .page-logos img {
-        max-height: 30px !important;
+        max-height: 34px !important;
     }
 
     div[data-testid="stVerticalBlock"] {
