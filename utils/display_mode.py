@@ -4,7 +4,7 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
 
-INATIVIDADE_SEGUNDOS = 2 * 60
+INATIVIDADE_SEGUNDOS = 5 * 60
 TROCA_TELA_SEGUNDOS = 60
 REFRESH_MS = 30 * 1000
 MENU_ABERTO_PADRAO = True

@@ -1366,9 +1366,11 @@ def label_prazo(data_recebimento):
     return f"Em {dias} dias", "safe"
 
 
-def proximas_datas(df, limite=3):
+def proximas_datas(df, limite=5):
     hoje = pd.Timestamp.today().normalize().date()
-    return resumo_por_data(df[df["Data Recebimento"] >= hoje]).head(limite)
+    df_futuro = df[df["Data Recebimento"] >= hoje]
+    base = df_futuro if not df_futuro.empty else df
+    return resumo_por_data(base).head(limite)
 
 
 def render_proximas_entregas(proximas):
@@ -1794,7 +1796,7 @@ with k3:
 with k4:
     render_kpi("Dias com Entrega", df_mes["Data Recebimento"].nunique(), "Dias no mês", "▣", "purple")
 
-proximas = proximas_datas(df)
+proximas = proximas_datas(df_mes)
 
 col_proximas, col_grafico = st.columns([1.05, 2.55], gap="medium")
 
