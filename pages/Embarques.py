@@ -1354,9 +1354,6 @@ def proximas_datas(df, limite=5):
 
 
 def render_proximos_embarques(proximas):
-    if "embarque_data_alerta" not in st.session_state and not proximas.empty:
-        st.session_state.embarque_data_alerta = proximas.iloc[0]["Data Embarque"].strftime("%Y-%m-%d")
-
     st.markdown('<div class="panel-title next-panel-title">Próximos embarques</div>', unsafe_allow_html=True)
 
     if proximas.empty:
@@ -1369,16 +1366,20 @@ def render_proximos_embarques(proximas):
     }
     valores = list(opcoes.values())
     valor_atual = st.session_state.get("embarque_data_alerta", valores[0])
-    indice_atual = valores.index(valor_atual) if valor_atual in valores else 0
+    if valor_atual not in valores:
+        valor_atual = valores[0]
+        st.session_state.embarque_data_alerta = valor_atual
+    indice_atual = valores.index(valor_atual)
 
     st.markdown('<div class="analysis-select">', unsafe_allow_html=True)
-    escolha = st.selectbox(
+    st.selectbox(
         "Embarque analisado",
-        list(opcoes.keys()),
+        valores,
         index=indice_atual,
+        format_func=lambda valor: next(rotulo for rotulo, opcao in opcoes.items() if opcao == valor),
+        key="embarque_data_alerta",
         label_visibility="collapsed",
     )
-    st.session_state.embarque_data_alerta = opcoes[escolha]
     st.markdown("</div>", unsafe_allow_html=True)
 
     for _, linha in proximas.iterrows():

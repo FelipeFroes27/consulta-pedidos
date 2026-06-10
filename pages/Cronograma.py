@@ -1301,7 +1301,10 @@ def preparar_dados(df_original):
     else:
         df["Qtde"] = 1
 
-    for coluna in ["Codigo", "Descricao", "Marca"]:
+    if "Referência" not in df.columns and "Referencia" in df.columns:
+        df = df.rename(columns={"Referencia": "Referência"})
+
+    for coluna in ["Codigo", "Descricao", "Referência", "Marca"]:
         if coluna in df.columns:
             df[coluna] = texto(df[coluna])
 
@@ -1374,9 +1377,6 @@ def proximas_datas(df, limite=5):
 
 
 def render_proximas_entregas(proximas):
-    if "cronograma_data_alerta" not in st.session_state and not proximas.empty:
-        st.session_state.cronograma_data_alerta = proximas.iloc[0]["Data Recebimento"].strftime("%Y-%m-%d")
-
     st.markdown('<div class="panel-title next-panel-title">Próximas entregas</div>', unsafe_allow_html=True)
 
     if proximas.empty:
@@ -1389,16 +1389,20 @@ def render_proximas_entregas(proximas):
     }
     valores = list(opcoes.values())
     valor_atual = st.session_state.get("cronograma_data_alerta", valores[0])
-    indice_atual = valores.index(valor_atual) if valor_atual in valores else 0
+    if valor_atual not in valores:
+        valor_atual = valores[0]
+        st.session_state.cronograma_data_alerta = valor_atual
+    indice_atual = valores.index(valor_atual)
 
     st.markdown('<div class="analysis-select">', unsafe_allow_html=True)
-    escolha = st.selectbox(
+    st.selectbox(
         "Entrega analisada",
-        list(opcoes.keys()),
+        valores,
         index=indice_atual,
+        format_func=lambda valor: next(rotulo for rotulo, opcao in opcoes.items() if opcao == valor),
+        key="cronograma_data_alerta",
         label_visibility="collapsed",
     )
-    st.session_state.cronograma_data_alerta = opcoes[escolha]
     st.markdown("</div>", unsafe_allow_html=True)
 
     for _, linha in proximas.iterrows():
@@ -1857,18 +1861,46 @@ if False:
         render_ranking("Distribuição por tipo", ranking_tipo, "Tipo", "ped.")
 
 with col_detalhe:
+    if "Referência" in df_detalhe.columns:
+        df_detalhe["Referência"] = df_detalhe["Referência"].fillna("").astype(str).str.strip()
+
     fornecedores_detalhe = ["Todos"] + sorted(df_detalhe["Subgrupo"].dropna().astype(str).unique())
-    titulo_col, filtro_col = st.columns([1.45, 1])
-    with filtro_col:
+    referencias_detalhe = ["Todas"]
+    if "Referência" in df_detalhe.columns:
+        referencias_detalhe += sorted(
+            referencia
+            for referencia in df_detalhe["Referência"].dropna().astype(str).unique()
+            if referencia.strip()
+        )
+
+    if st.session_state.get("recebimento_fornecedor_select") not in fornecedores_detalhe:
+        st.session_state.recebimento_fornecedor_select = "Todos"
+
+    if st.session_state.get("recebimento_referencia_select") not in referencias_detalhe:
+        st.session_state.recebimento_referencia_select = "Todas"
+
+    titulo_col, fornecedor_col, referencia_col = st.columns([1.25, .9, .9])
+    with fornecedor_col:
         fornecedor_filtro = st.selectbox(
             "Fornecedor",
             fornecedores_detalhe,
             key="recebimento_fornecedor_select",
         )
 
+    with referencia_col:
+        referencia_filtro = st.selectbox(
+            "Referência",
+            referencias_detalhe,
+            key="recebimento_referencia_select",
+        )
+
     if fornecedor_filtro != "Todos":
         df_detalhe = df_detalhe[df_detalhe["Subgrupo"] == fornecedor_filtro].copy()
         titulo_detalhe += f" - {fornecedor_filtro}"
+
+    if referencia_filtro != "Todas" and "Referência" in df_detalhe.columns:
+        df_detalhe = df_detalhe[df_detalhe["Referência"] == referencia_filtro].copy()
+        titulo_detalhe += f" - Ref. {referencia_filtro}"
 
     colunas = [
         "Numero do Pedido",
@@ -1876,13 +1908,14 @@ with col_detalhe:
         "Subgrupo",
         "Grupo",
         "Codigo",
+        "Referência",
         "Descricao",
         "Qtde",
     ]
     colunas = [col for col in colunas if col in df_detalhe.columns]
     df_detalhe = df_detalhe[colunas].copy()
 
-    for coluna_texto in ["Numero do Pedido", "Codigo"]:
+    for coluna_texto in ["Numero do Pedido", "Codigo", "Referência"]:
         if coluna_texto in df_detalhe.columns:
             df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype(str).str.strip()
 
@@ -1900,7 +1933,7 @@ with col_detalhe:
         }
     )
 
-    for coluna_texto in ["Pedido", "Código"]:
+    for coluna_texto in ["Pedido", "Código", "Referência"]:
         if coluna_texto in df_detalhe.columns:
             df_detalhe[coluna_texto] = df_detalhe[coluna_texto].fillna("").astype("string")
 
@@ -1914,5 +1947,6 @@ with col_detalhe:
         column_config={
             "Pedido": st.column_config.TextColumn("Pedido"),
             "Código": st.column_config.TextColumn("Código"),
+            "Referência": st.column_config.TextColumn("Referência"),
         },
     )

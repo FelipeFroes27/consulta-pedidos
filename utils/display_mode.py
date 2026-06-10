@@ -111,6 +111,27 @@ def _aplicar_css_base():
             visibility: hidden !important;
         }
 
+        div[data-baseweb="select"],
+        div[data-baseweb="select"] *,
+        div[data-baseweb="popover"],
+        div[data-baseweb="popover"] *,
+        div[role="listbox"],
+        div[role="listbox"] *,
+        [data-testid="stSelectbox"],
+        [data-testid="stSelectbox"] * {
+            color: #000000 !important;
+            opacity: 1 !important;
+        }
+
+        div[data-baseweb="select"] > div {
+            background: #ffffff !important;
+            border-color: #000000 !important;
+        }
+
+        div[data-baseweb="select"] svg {
+            fill: #000000 !important;
+        }
+
         iframe[title*="streamlit_autorefresh"],
         div[data-testid="stIFrame"]:has(iframe[title*="streamlit_autorefresh"]),
         div[data-testid="stElementContainer"]:has(iframe[title*="streamlit_autorefresh"]) {
@@ -218,6 +239,27 @@ def _aplicar_layout_menu(menu_aberto):
         [data-testid="stSidebarCollapsedControl"] {{
             display: none !important;
             visibility: hidden !important;
+        }}
+
+        div[data-baseweb="select"],
+        div[data-baseweb="select"] *,
+        div[data-baseweb="popover"],
+        div[data-baseweb="popover"] *,
+        div[role="listbox"],
+        div[role="listbox"] *,
+        [data-testid="stSelectbox"],
+        [data-testid="stSelectbox"] * {{
+            color: #000000 !important;
+            opacity: 1 !important;
+        }}
+
+        div[data-baseweb="select"] > div {{
+            background: #ffffff !important;
+            border-color: #000000 !important;
+        }}
+
+        div[data-baseweb="select"] svg {{
+            fill: #000000 !important;
         }}
 
         {sidebar_css}
