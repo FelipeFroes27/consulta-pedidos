@@ -23,6 +23,8 @@ def render_menu_lateral():
 
 
 def ativar_modo_exibicao(pagina_atual):
+    _aplicar_css_base()
+
     contador = st_autorefresh(
         interval=REFRESH_MS,
         key="modo_exibicao_refresh",
@@ -83,6 +85,50 @@ def _registrar_atividade(agora):
 
 def _ocultar_sidebar():
     st.session_state.menu_lateral_aberto = False
+
+
+def _aplicar_css_base():
+    st.markdown(
+        """
+        <style>
+        header,
+        header[data-testid="stHeader"],
+        [data-testid="stHeader"],
+        [data-testid="stHeaderActionElements"],
+        [data-testid="stToolbar"],
+        [data-testid="stStatusWidget"],
+        [data-testid="stDecoration"] {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        #MainMenu,
+        footer {
+            visibility: hidden !important;
+        }
+
+        iframe[title*="streamlit_autorefresh"],
+        div[data-testid="stIFrame"]:has(iframe[title*="streamlit_autorefresh"]),
+        div[data-testid="stElementContainer"]:has(iframe[title*="streamlit_autorefresh"]) {
+            position: fixed !important;
+            width: 0 !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def _aplicar_layout_menu(menu_aberto):
