@@ -7,7 +7,8 @@ from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
 
 
 st.set_page_config(
-    page_title="Sistema de Compras",
+    page_title="Logistica Trendx",
+    page_icon="icones/consulta-logo-refinado.png",
     layout="wide",
     initial_sidebar_state="expanded",
 )
