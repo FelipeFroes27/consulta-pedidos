@@ -1,12 +1,6 @@
-import time
-
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh
 
 
-INATIVIDADE_SEGUNDOS = 5 * 60
-TROCA_TELA_SEGUNDOS = 60
-REFRESH_MS = 30 * 1000
 MENU_ABERTO_PADRAO = True
 
 
@@ -16,7 +10,6 @@ def render_menu_lateral():
 
     if st.button("Menu", key="menu_lateral_toggle"):
         st.session_state.menu_lateral_aberto = not st.session_state.menu_lateral_aberto
-        _registrar_atividade(time.time())
         st.rerun()
 
     _aplicar_layout_menu(st.session_state.menu_lateral_aberto)
@@ -25,59 +18,7 @@ def render_menu_lateral():
 def ativar_modo_exibicao(pagina_atual):
     _aplicar_css_base()
 
-    contador = st_autorefresh(
-        interval=REFRESH_MS,
-        key="modo_exibicao_refresh",
-    )
-    agora = time.time()
-
-    pagina_anterior = st.session_state.get("modo_exibicao_pagina_atual")
-    navegacao_automatica = st.session_state.get("modo_exibicao_navegando", False)
     st.session_state.modo_exibicao_pagina_atual = pagina_atual
-
-    if pagina_anterior is not None and pagina_anterior != pagina_atual:
-        if navegacao_automatica:
-            st.session_state.modo_exibicao_navegando = False
-        else:
-            _registrar_atividade(agora)
-
-    ultimo_contador = st.session_state.get("modo_exibicao_contador")
-    st.session_state.modo_exibicao_contador = contador
-
-    foi_refresh_automatico = ultimo_contador is not None and contador != ultimo_contador
-
-    if "modo_exibicao_ultima_atividade" not in st.session_state:
-        st.session_state.modo_exibicao_ultima_atividade = agora
-
-    if not foi_refresh_automatico:
-        _registrar_atividade(agora)
-
-    tempo_parado = agora - st.session_state.modo_exibicao_ultima_atividade
-
-    if tempo_parado < INATIVIDADE_SEGUNDOS:
-        return
-
-    st.session_state.modo_exibicao_ativo = True
-    _ocultar_sidebar()
-
-    proxima_troca = st.session_state.get("modo_exibicao_proxima_troca")
-    if proxima_troca is not None and agora < proxima_troca:
-        return
-
-    st.session_state.modo_exibicao_proxima_troca = agora + TROCA_TELA_SEGUNDOS
-    st.session_state.modo_exibicao_navegando = True
-    st.switch_page(_proxima_pagina(pagina_atual))
-
-
-def _proxima_pagina(pagina_atual):
-    if pagina_atual == "recebimentos":
-        return "pages/Embarques.py"
-
-    return "pages/Cronograma.py"
-
-
-def _registrar_atividade(agora):
-    st.session_state.modo_exibicao_ultima_atividade = agora
     st.session_state.modo_exibicao_ativo = False
     st.session_state.modo_exibicao_navegando = False
     st.session_state.modo_exibicao_proxima_troca = None
@@ -132,20 +73,6 @@ def _aplicar_css_base():
             fill: #000000 !important;
         }
 
-        iframe[title*="streamlit_autorefresh"],
-        div[data-testid="stIFrame"]:has(iframe[title*="streamlit_autorefresh"]),
-        div[data-testid="stElementContainer"]:has(iframe[title*="streamlit_autorefresh"]) {
-            position: fixed !important;
-            width: 0 !important;
-            height: 0 !important;
-            min-height: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            border: 0 !important;
-            opacity: 0 !important;
-            overflow: hidden !important;
-            pointer-events: none !important;
-        }
         </style>
         """,
         unsafe_allow_html=True,

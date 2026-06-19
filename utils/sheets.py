@@ -4,8 +4,11 @@ import streamlit as st
 import pandas as pd
 import gspread
 import unicodedata
+from datetime import datetime
 from google.oauth2.service_account import Credentials
 
+
+SPREADSHEET_ID = "1JU-8v_mxydxgDFwWg_aSURHBeM0PyOQPkUBe-LqitXk"
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -24,20 +27,94 @@ def conectar():
     return gspread.authorize(creds)
 
 
+@st.cache_resource
+def abrir_planilha():
+    return conectar().open_by_key(SPREADSHEET_ID)
+
+
 @st.cache_data(ttl=300)
 def carregar_dados():
 
-    gc = conectar()
-
-    planilha = gc.open_by_key(
-        "1JU-8v_mxydxgDFwWg_aSURHBeM0PyOQPkUBe-LqitXk"
-    )
+    planilha = abrir_planilha()
 
     aba = planilha.worksheet("Pedidos")
 
     dados = aba.get_all_records(numericise_ignore=["all"])
 
     return pd.DataFrame(dados)
+
+
+@st.cache_data(ttl=300)
+def carregar_historico_recebimentos():
+    planilha = abrir_planilha()
+    aba = planilha.worksheet("Histórico")
+    dados = aba.get_all_records(numericise_ignore=["all"])
+    return pd.DataFrame(dados)
+
+
+def localizar_pedido(numero_pedido):
+    numero_pedido = str(numero_pedido or "").strip()
+    if not numero_pedido:
+        return pd.DataFrame()
+
+    df = carregar_dados().copy()
+    coluna_pedido = _encontrar_coluna(df, ["Numero do Pedido", "Número do Pedido", "Pedido"])
+    if coluna_pedido is None:
+        return pd.DataFrame()
+
+    filtro = df[coluna_pedido].fillna("").astype(str).str.strip() == numero_pedido
+    return df[filtro].copy()
+
+
+def recebimento_ja_registrado(numero_pedido):
+    numero_pedido = str(numero_pedido or "").strip()
+    if not numero_pedido:
+        return False
+
+    historico = carregar_historico_recebimentos()
+    if historico.empty:
+        return False
+
+    coluna_pedido = _encontrar_coluna(historico, ["Pedido", "Numero do Pedido", "Número do Pedido"])
+    if coluna_pedido is None:
+        return False
+
+    return bool((historico[coluna_pedido].fillna("").astype(str).str.strip() == numero_pedido).any())
+
+
+def registrar_recebimento(numero_pedido, pedido):
+    numero_pedido = str(numero_pedido or "").strip()
+    if not numero_pedido:
+        raise ValueError("Informe o numero do pedido.")
+
+    if recebimento_ja_registrado(numero_pedido):
+        raise ValueError("Este pedido ja possui recebimento registrado.")
+
+    planilha = abrir_planilha()
+    aba = planilha.worksheet("Histórico")
+    headers = aba.row_values(1)
+    linha = []
+
+    coluna_data_entrega = _encontrar_coluna(pedido.to_frame().T, ["Data Entrega", "Data de entrega", "Entrega"])
+    data_entrega = str(pedido.get(coluna_data_entrega, "")).strip() if coluna_data_entrega else ""
+    data_entrega_dt = pd.to_datetime(data_entrega, dayfirst=True, errors="coerce")
+    if pd.notna(data_entrega_dt):
+        data_entrega = data_entrega_dt.strftime("%d/%m/%Y")
+    data_recebimento = datetime.now().strftime("%d/%m/%Y")
+
+    for header in headers:
+        header_normalizado = _normalizar_nome_coluna(header)
+        if header_normalizado in ["pedido", "numero do pedido"]:
+            linha.append(numero_pedido)
+        elif header_normalizado == "data de entrega (sistema)":
+            linha.append(data_entrega)
+        elif header_normalizado == "data de recebimento":
+            linha.append(data_recebimento)
+        else:
+            linha.append("")
+
+    aba.append_row(linha, value_input_option="RAW")
+    carregar_historico_recebimentos.clear()
 
 
 def _texto_chave(serie):
@@ -147,11 +224,7 @@ def _excluir_linhas_duplicadas_na_aba(aba, linhas):
 @st.cache_data(ttl=300)
 def carregar_embarques():
 
-    gc = conectar()
-
-    planilha = gc.open_by_key(
-        "1JU-8v_mxydxgDFwWg_aSURHBeM0PyOQPkUBe-LqitXk"
-    )
+    planilha = abrir_planilha()
 
     aba = planilha.worksheet("Embarques")
 

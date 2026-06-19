@@ -171,6 +171,7 @@ with st.sidebar:
     st.markdown("</div>", unsafe_allow_html=True)
     st.page_link("app.py", label="Início")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
+    st.page_link("pages/Confirmar_Recebimento.py", label="Confirmar Recebimento")
     st.page_link("pages/Cronograma.py", label="Recebimentos")
     st.page_link("pages/Embarques.py", label="Embarques")
 
