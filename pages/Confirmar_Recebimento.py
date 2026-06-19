@@ -205,7 +205,7 @@ with st.sidebar:
     st.image("Logo Branco.bmp", width=72)
     st.image("logo preto goper.png", width=32)
     st.markdown("</div>", unsafe_allow_html=True)
-    st.page_link("app.py", label="Início")
+    st.page_link("app.py", label="Inicio")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
     st.page_link("pages/Confirmar_Recebimento.py", label="Confirmar Recebimento")
     st.page_link("pages/Cronograma.py", label="Recebimentos")
@@ -224,7 +224,15 @@ def formatar_data(valor):
 
 
 def formatar_numero(valor):
-    numero = pd.to_numeric(str(valor or "").replace(",", "."), errors="coerce")
+    if isinstance(valor, (int, float)):
+        numero = pd.to_numeric(valor, errors="coerce")
+    else:
+        texto_numero = str(valor or "").strip()
+        if "," in texto_numero and "." in texto_numero:
+            texto_numero = texto_numero.replace(".", "").replace(",", ".")
+        elif "," in texto_numero:
+            texto_numero = texto_numero.replace(",", ".")
+        numero = pd.to_numeric(texto_numero, errors="coerce")
     if pd.isna(numero):
         return texto(valor)
     if float(numero).is_integer():
@@ -232,14 +240,40 @@ def formatar_numero(valor):
     return str(round(float(numero), 2)).replace(".", ",")
 
 
-def render_pedido(pedido):
-    numero = str(pedido.get("Numero do Pedido", "")).strip()
+def somar_coluna(df, coluna):
+    if coluna not in df.columns:
+        return None
+
+    valores = df[coluna].fillna("").astype(str).str.strip()
+    valores = valores.mask(
+        valores.str.contains(",", regex=False) & valores.str.contains(".", regex=False),
+        valores.str.replace(".", "", regex=False).str.replace(",", ".", regex=False),
+    )
+    valores = valores.mask(
+        valores.str.contains(",", regex=False) & ~valores.str.contains(".", regex=False),
+        valores.str.replace(",", ".", regex=False),
+    )
+    numeros = pd.to_numeric(valores, errors="coerce")
+    return numeros.sum() if numeros.notna().any() else None
+
+
+def render_pedido(itens):
+    primeiro = itens.iloc[0]
+    numero = str(primeiro.get("Numero do Pedido", "")).strip()
     recebido = recebimento_ja_registrado(numero)
+    quantidade_total = somar_coluna(itens, "Qtde")
+    total_pedido = somar_coluna(itens, "Total")
+    colunas_visiveis = [
+        coluna
+        for coluna in ["Codigo", "Descricao", "Qtde", "Total", "Referencia", "Marca", "Categoria", "Grupo", "Tipo"]
+        if coluna in itens.columns
+    ]
+    altura_tabela = min(340, 70 + (len(itens) * 36))
 
     st.markdown(
         f"""
         <div class="panel">
-            <strong>Informações do pedido</strong>
+            <strong>Informacoes do pedido</strong>
             <div class="detail-grid">
                 <div class="detail-box">
                     <div class="detail-label">Pedido</div>
@@ -247,31 +281,31 @@ def render_pedido(pedido):
                 </div>
                 <div class="detail-box">
                     <div class="detail-label">Fornecedor</div>
-                    <div class="detail-value">{texto(pedido.get("Fornecedor", ""))}</div>
+                    <div class="detail-value">{texto(primeiro.get("Fornecedor", ""))}</div>
                 </div>
                 <div class="detail-box">
                     <div class="detail-label">Data entrega</div>
-                    <div class="detail-value">{escape(formatar_data(pedido.get("Data Entrega", "")))}</div>
+                    <div class="detail-value">{escape(formatar_data(primeiro.get("Data Entrega", "")))}</div>
                 </div>
                 <div class="detail-box">
-                    <div class="detail-label">Quantidade</div>
-                    <div class="detail-value">{escape(formatar_numero(pedido.get("Qtde", "")))}</div>
+                    <div class="detail-label">Itens</div>
+                    <div class="detail-value">{len(itens)}</div>
                 </div>
                 <div class="detail-box">
-                    <div class="detail-label">Código</div>
-                    <div class="detail-value">{texto(pedido.get("Codigo", ""))}</div>
+                    <div class="detail-label">Quantidade total</div>
+                    <div class="detail-value">{escape(formatar_numero(quantidade_total)) if quantidade_total is not None else "-"}</div>
                 </div>
                 <div class="detail-box">
-                    <div class="detail-label">Descrição</div>
-                    <div class="detail-value">{texto(pedido.get("Descricao", ""))}</div>
+                    <div class="detail-label">Total</div>
+                    <div class="detail-value">{escape(formatar_numero(total_pedido)) if total_pedido is not None else "-"}</div>
                 </div>
                 <div class="detail-box">
                     <div class="detail-label">Marca</div>
-                    <div class="detail-value">{texto(pedido.get("Marca", ""))}</div>
+                    <div class="detail-value">{texto(primeiro.get("Marca", ""))}</div>
                 </div>
                 <div class="detail-box">
                     <div class="detail-label">Tipo</div>
-                    <div class="detail-value">{texto(pedido.get("Tipo", ""))}</div>
+                    <div class="detail-value">{texto(primeiro.get("Tipo", ""))}</div>
                 </div>
             </div>
         </div>
@@ -279,20 +313,28 @@ def render_pedido(pedido):
         unsafe_allow_html=True,
     )
 
+    if colunas_visiveis:
+        st.dataframe(
+            itens[colunas_visiveis],
+            use_container_width=True,
+            hide_index=True,
+            height=altura_tabela,
+        )
+
     if recebido:
         st.markdown(
-            '<div class="status-box">Recebimento já registrado para este pedido.</div>',
+            '<div class="status-box">Recebimento ja registrado para este pedido.</div>',
             unsafe_allow_html=True,
         )
         return
 
     if st.button("Confirmar recebimento", key="confirmar_recebimento", use_container_width=True):
         try:
-            registrar_recebimento(numero, pedido)
+            registrar_recebimento(numero, itens)
         except Exception as exc:
             st.error(str(exc))
         else:
-            st.success("Recebimento registrado no Histórico.")
+            st.success("Recebimento registrado no Historico.")
             st.rerun()
 
 
@@ -301,7 +343,7 @@ st.markdown(
     <div class="page-head">
         <div class="page-title">
             <h1>Confirmar Recebimento</h1>
-            <p>Digite o número do pedido para consultar os dados e registrar o recebimento.</p>
+            <p>Digite o numero do pedido para consultar os dados e registrar o recebimento.</p>
         </div>
     </div>
     """,
@@ -310,7 +352,7 @@ st.markdown(
 
 with st.form("form_busca_recebimento"):
     pedido_digitado = st.text_input(
-        "Número do pedido",
+        "Numero do pedido",
         value=st.session_state.get("pedido_recebimento", ""),
     )
     consultar = st.form_submit_button("Consultar", use_container_width=True)
@@ -322,7 +364,7 @@ numero_pedido = st.session_state.get("pedido_recebimento", "").strip()
 
 if not numero_pedido:
     st.markdown(
-        '<div class="status-box">Informe um número de pedido para consultar.</div>',
+        '<div class="status-box">Informe um numero de pedido para consultar.</div>',
         unsafe_allow_html=True,
     )
     st.stop()
@@ -330,25 +372,15 @@ if not numero_pedido:
 try:
     encontrados = localizar_pedido(numero_pedido)
 except Exception as exc:
-    st.error("Não foi possível consultar a planilha.")
+    st.error("Nao foi possivel consultar a planilha.")
     st.caption(str(exc))
     st.stop()
 
 if encontrados.empty:
     st.markdown(
-        '<div class="status-box">Nenhum pedido encontrado com este número.</div>',
+        '<div class="status-box">Nenhum pedido encontrado com este numero.</div>',
         unsafe_allow_html=True,
     )
     st.stop()
 
-if len(encontrados) > 1:
-    opcoes = {
-        f"{linha.get('Numero do Pedido', '')} | {linha.get('Codigo', '')} | {str(linha.get('Descricao', ''))[:80]}": linha
-        for _, linha in encontrados.iterrows()
-    }
-    selecionado = st.selectbox("Itens encontrados", list(opcoes.keys()))
-    pedido = opcoes[selecionado]
-else:
-    pedido = encontrados.iloc[0]
-
-render_pedido(pedido)
+render_pedido(encontrados)
