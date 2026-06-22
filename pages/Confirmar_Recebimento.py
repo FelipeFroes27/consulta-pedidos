@@ -1,15 +1,18 @@
-import base64
+import os
+import platform
+import subprocess
+import tempfile
 from html import escape
 from io import BytesIO
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
 from utils.sheets import carregar_volumetria, localizar_pedido, recebimento_ja_registrado, registrar_recebimento
@@ -355,15 +358,21 @@ def gerar_pdf_carregamento(numero_pedido, itens):
     documento = SimpleDocTemplate(
         buffer,
         pagesize=landscape(A4),
-        rightMargin=.8 * cm,
-        leftMargin=.8 * cm,
-        topMargin=.8 * cm,
-        bottomMargin=.8 * cm,
+        rightMargin=.35 * cm,
+        leftMargin=.35 * cm,
+        topMargin=.35 * cm,
+        bottomMargin=.35 * cm,
     )
     estilos = getSampleStyleSheet()
     normal = estilos["BodyText"]
-    normal.fontSize = 7
-    normal.leading = 8
+    normal.fontName = "Helvetica"
+    normal.fontSize = 6.4
+    normal.leading = 7.2
+
+    titulo_style = estilos["Title"]
+    titulo_style.fontName = "Helvetica-Bold"
+    titulo_style.fontSize = 18
+    titulo_style.leading = 22
 
     linhas = preparar_linhas_pdf(numero_pedido, itens)
     cabecalho = ["Numero do pedido", "Codigo", "Descricao", "Qtde", "Grupo", "Volumetria", "Conferencia"]
@@ -371,113 +380,84 @@ def gerar_pdf_carregamento(numero_pedido, itens):
     for linha in linhas:
         dados.append([Paragraph(escape(str(valor)), normal) for valor in linha])
 
-    tabela = Table(
-        dados,
-        repeatRows=1,
-        colWidths=[3.1 * cm, 2.5 * cm, 8.5 * cm, 1.7 * cm, 3.5 * cm, 2.6 * cm, 3.2 * cm],
+    base_dir = Path(__file__).resolve().parents[1]
+    logo_principal = base_dir / "icones" / "romaneio-logo-trendx.png"
+    logo_simbolo = base_dir / "icones" / "romaneio-logo-simbolo.png"
+    header = Table(
+        [
+            [
+                Image(str(logo_principal), width=4.2 * cm, height=1.02 * cm),
+                Paragraph(f"Romaneio de conferencia - Pedido: {escape(str(numero_pedido))}", titulo_style),
+                Image(str(logo_simbolo), width=1.05 * cm, height=1.05 * cm),
+            ]
+        ],
+        colWidths=[5.2 * cm, 18.3 * cm, 5.2 * cm],
     )
-    tabela.setStyle(
+    header.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E79")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 7),
-                ("GRID", (0, 0), (-1, -1), .4, colors.black),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("ALIGN", (3, 1), (3, -1), "CENTER"),
-                ("ALIGN", (5, 1), (6, -1), "CENTER"),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F2F7FB")]),
-                ("MINROWHEIGHT", (0, 1), (-1, -1), .8 * cm),
+                ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                ("ALIGN", (1, 0), (1, 0), "CENTER"),
+                ("ALIGN", (2, 0), (2, 0), "RIGHT"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
             ]
         )
     )
 
-    titulo = Paragraph(f"Carregamento do pedido {escape(str(numero_pedido))}", estilos["Title"])
-    documento.build([titulo, Spacer(1, .25 * cm), tabela])
+    tabela = Table(
+        dados,
+        repeatRows=1,
+        colWidths=[3.0 * cm, 2.2 * cm, 10.0 * cm, 1.4 * cm, 4.7 * cm, 2.5 * cm, 4.8 * cm],
+    )
+    tabela.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.black),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, 0), 6.8),
+                ("FONTSIZE", (0, 1), (-1, -1), 6.4),
+                ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+                ("TEXTCOLOR", (0, 1), (-1, -1), colors.black),
+                ("GRID", (0, 0), (-1, -1), .55, colors.black),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (3, 1), (3, -1), "CENTER"),
+                ("ALIGN", (5, 1), (6, -1), "CENTER"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 3),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("MINROWHEIGHT", (0, 0), (-1, 0), .55 * cm),
+                ("MINROWHEIGHT", (0, 1), (-1, -1), .62 * cm),
+            ]
+        )
+    )
+
+    documento.build([header, Spacer(1, .15 * cm), tabela])
     buffer.seek(0)
     return buffer.getvalue()
 
 
-def render_botao_imprimir_pdf(pdf_bytes, nome_arquivo):
-    pdf_base64 = base64.b64encode(pdf_bytes).decode("ascii")
-    nome_seguro = escape(nome_arquivo, quote=True)
+def imprimir_pdf_padrao(pdf_bytes, nome_arquivo):
+    pasta = Path(tempfile.gettempdir()) / "consulta_pedidos_impressao"
+    pasta.mkdir(parents=True, exist_ok=True)
+    caminho_pdf = pasta / nome_arquivo
+    caminho_pdf.write_bytes(pdf_bytes)
 
-    components.html(
-        f"""
-        <button id="print-pdf-button" type="button">
-            Imprimir carregamento
-        </button>
-        <script>
-        const button = document.getElementById("print-pdf-button");
-        button.addEventListener("click", () => {{
-            const pdfBase64 = "{pdf_base64}";
-            const byteCharacters = atob(pdfBase64);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {{
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }}
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], {{ type: "application/pdf" }});
-            const url = URL.createObjectURL(blob);
-            const printWindow = window.open("", "_blank");
+    sistema = platform.system().lower()
+    if sistema == "windows":
+        os.startfile(str(caminho_pdf), "print")
+    elif sistema == "darwin":
+        subprocess.run(["lp", str(caminho_pdf)], check=True)
+    else:
+        subprocess.run(["lp", str(caminho_pdf)], check=True)
 
-            if (!printWindow) {{
-                window.open(url, "_blank");
-                return;
-            }}
-
-            printWindow.document.write(`
-                <!doctype html>
-                <html>
-                    <head>
-                        <title>{nome_seguro}</title>
-                        <style>
-                            html, body {{
-                                margin: 0;
-                                width: 100%;
-                                height: 100%;
-                                overflow: hidden;
-                            }}
-                            iframe {{
-                                border: 0;
-                                width: 100%;
-                                height: 100%;
-                            }}
-                        </style>
-                    </head>
-                    <body>
-                        <iframe id="pdf-frame" src="${{url}}"></iframe>
-                        <script>
-                            const frame = document.getElementById("pdf-frame");
-                            frame.onload = () => {{
-                                setTimeout(() => {{
-                                    frame.contentWindow.focus();
-                                    frame.contentWindow.print();
-                                }}, 500);
-                            }};
-                        <\\/script>
-                    </body>
-                </html>
-            `);
-            printWindow.document.close();
-        }});
-        </script>
-        <style>
-            #print-pdf-button {{
-                width: 100%;
-                min-height: 42px;
-                border: 2px solid #000000;
-                border-radius: 7px;
-                background: #000000;
-                color: #ffffff;
-                font: 850 16px Arial, sans-serif;
-                cursor: pointer;
-            }}
-        </style>
-        """,
-        height=52,
-    )
+    return caminho_pdf
 
 
 def render_pedido(itens):
@@ -544,21 +524,15 @@ def render_pedido(itens):
             height=altura_tabela,
         )
 
-    try:
-        pdf_carregamento = gerar_pdf_carregamento(numero, itens)
-    except Exception as exc:
-        st.error("Nao foi possivel gerar o PDF do carregamento.")
-        st.caption(str(exc))
-    else:
-        nome_pdf = f"carregamento_pedido_{numero or 'sem_numero'}.pdf"
-        render_botao_imprimir_pdf(pdf_carregamento, nome_pdf)
-        st.download_button(
-            "Baixar PDF",
-            data=pdf_carregamento,
-            file_name=nome_pdf,
-            mime="application/pdf",
-            use_container_width=True,
-        )
+    if st.button("Imprimir carregamento", key="imprimir_carregamento", use_container_width=True):
+        try:
+            pdf_carregamento = gerar_pdf_carregamento(numero, itens)
+            imprimir_pdf_padrao(pdf_carregamento, f"carregamento_pedido_{numero or 'sem_numero'}.pdf")
+        except Exception as exc:
+            st.error("Nao foi possivel imprimir o carregamento.")
+            st.caption(str(exc))
+        else:
+            st.success("Carregamento enviado para a impressora padrao.")
 
     if recebido:
         st.markdown(
