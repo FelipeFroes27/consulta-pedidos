@@ -482,7 +482,7 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                         <style>
                             @page {{
                                 size: A4 landscape;
-                                margin: 4mm 5mm 11mm 5mm;
+                                margin: 3mm 4mm 6mm 4mm;
                             }}
                             * {{
                                 box-sizing: border-box;
@@ -495,24 +495,24 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                             }}
                             .topo {{
                                 display: grid;
-                                grid-template-columns: 145px 1fr 58px;
+                                grid-template-columns: 96px 1fr 42px;
                                 align-items: center;
-                                gap: 8px;
-                                margin: 2px 0 5px 0;
+                                gap: 6px;
+                                margin: 0 0 3px 0;
                             }}
                             .logo-trendx {{
-                                width: 116px;
+                                width: 82px;
                                 height: auto;
                             }}
                             .logo-simbolo {{
-                                width: 32px;
+                                width: 24px;
                                 height: auto;
                                 justify-self: end;
                             }}
                             h1 {{
                                 margin: 0;
                                 text-align: center;
-                                font-size: 18px;
+                                font-size: 16px;
                                 line-height: 1.1;
                                 font-weight: 800;
                             }}
@@ -534,16 +534,16 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                                 background: #000000;
                                 color: #ffffff;
                                 border: 1px solid #000000;
-                                padding: 4px 4px;
-                                font-size: 9px;
+                                padding: 4px 5px;
+                                font-size: 10px;
                                 text-align: left;
                                 font-weight: 700;
                             }}
                             td {{
-                                min-height: 18px;
+                                min-height: 19px;
                                 border: 1px solid #000000;
-                                padding: 2px 4px;
-                                font-size: 8.2px;
+                                padding: 3px 5px;
+                                font-size: 9px;
                                 vertical-align: middle;
                                 background: #ffffff;
                                 overflow-wrap: anywhere;
