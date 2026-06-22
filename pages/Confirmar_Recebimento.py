@@ -1,10 +1,16 @@
 from html import escape
+from io import BytesIO
 
 import pandas as pd
 import streamlit as st
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
-from utils.sheets import localizar_pedido, recebimento_ja_registrado, registrar_recebimento
+from utils.sheets import carregar_volumetria, localizar_pedido, recebimento_ja_registrado, registrar_recebimento
 
 
 st.set_page_config(
@@ -257,6 +263,140 @@ def somar_coluna(df, coluna):
     return numeros.sum() if numeros.notna().any() else None
 
 
+def normalizar_coluna(nome):
+    texto_coluna = str(nome or "").strip().lower()
+    trocas = {
+        "Ã³": "o",
+        "ó": "o",
+        "Ã§": "c",
+        "ç": "c",
+        "Ã£": "a",
+        "ã": "a",
+        "Ãª": "e",
+        "ê": "e",
+        "Ãº": "u",
+        "ú": "u",
+        "Ã­": "i",
+        "í": "i",
+    }
+    for origem, destino in trocas.items():
+        texto_coluna = texto_coluna.replace(origem, destino)
+    return " ".join(texto_coluna.split())
+
+
+def encontrar_coluna(df, opcoes):
+    mapa = {normalizar_coluna(coluna): coluna for coluna in df.columns}
+    for opcao in opcoes:
+        coluna = mapa.get(normalizar_coluna(opcao))
+        if coluna is not None:
+            return coluna
+    return None
+
+
+def chave_codigo(valor):
+    return "".join(char for char in str(valor or "").upper().strip() if char.isalnum())
+
+
+def montar_mapa_volumetria():
+    try:
+        volumetria = carregar_volumetria()
+    except Exception:
+        return {}
+
+    if volumetria.empty:
+        return {}
+
+    coluna_codigo = encontrar_coluna(volumetria, ["Codigo", "Código", "Produto", "Referencia", "Referência"])
+    coluna_caixas = encontrar_coluna(
+        volumetria,
+        ["Volumetria", "Caixas por produto", "Caixas", "Qtd caixas", "Quantidade de caixas"],
+    )
+
+    if coluna_codigo is None or coluna_caixas is None:
+        return {}
+
+    mapa = {}
+    for _, linha in volumetria.iterrows():
+        codigo = chave_codigo(linha.get(coluna_codigo, ""))
+        if codigo and codigo not in mapa:
+            mapa[codigo] = str(linha.get(coluna_caixas, "")).strip() or "Nao cadastrado"
+    return mapa
+
+
+def preparar_linhas_pdf(numero_pedido, itens):
+    mapa_volumetria = montar_mapa_volumetria()
+    col_codigo = encontrar_coluna(itens, ["Codigo", "Código"])
+    col_descricao = encontrar_coluna(itens, ["Descricao", "Descrição"])
+    col_qtde = encontrar_coluna(itens, ["Qtde", "Quantidade", "Qtd"])
+    col_grupo = encontrar_coluna(itens, ["Grupo"])
+
+    linhas = []
+    for _, item in itens.iterrows():
+        codigo = str(item.get(col_codigo, "")).strip() if col_codigo else ""
+        volumetria = mapa_volumetria.get(chave_codigo(codigo), "Nao cadastrado")
+        linhas.append(
+            [
+                numero_pedido,
+                codigo,
+                str(item.get(col_descricao, "")).strip() if col_descricao else "",
+                formatar_numero(item.get(col_qtde, "")) if col_qtde else "",
+                str(item.get(col_grupo, "")).strip() if col_grupo else "",
+                volumetria,
+                "",
+            ]
+        )
+    return linhas
+
+
+def gerar_pdf_carregamento(numero_pedido, itens):
+    buffer = BytesIO()
+    documento = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        rightMargin=.8 * cm,
+        leftMargin=.8 * cm,
+        topMargin=.8 * cm,
+        bottomMargin=.8 * cm,
+    )
+    estilos = getSampleStyleSheet()
+    normal = estilos["BodyText"]
+    normal.fontSize = 7
+    normal.leading = 8
+
+    linhas = preparar_linhas_pdf(numero_pedido, itens)
+    cabecalho = ["Numero do pedido", "Codigo", "Descricao", "Qtde", "Grupo", "Volumetria", "Conferencia"]
+    dados = [cabecalho]
+    for linha in linhas:
+        dados.append([Paragraph(escape(str(valor)), normal) for valor in linha])
+
+    tabela = Table(
+        dados,
+        repeatRows=1,
+        colWidths=[3.1 * cm, 2.5 * cm, 8.5 * cm, 1.7 * cm, 3.5 * cm, 2.6 * cm, 3.2 * cm],
+    )
+    tabela.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E79")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("GRID", (0, 0), (-1, -1), .4, colors.black),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (3, 1), (3, -1), "CENTER"),
+                ("ALIGN", (5, 1), (6, -1), "CENTER"),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F2F7FB")]),
+                ("MINROWHEIGHT", (0, 1), (-1, -1), .8 * cm),
+            ]
+        )
+    )
+
+    titulo = Paragraph(f"Carregamento do pedido {escape(str(numero_pedido))}", estilos["Title"])
+    documento.build([titulo, Spacer(1, .25 * cm), tabela])
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 def render_pedido(itens):
     primeiro = itens.iloc[0]
     numero = str(primeiro.get("Numero do Pedido", "")).strip()
@@ -319,6 +459,20 @@ def render_pedido(itens):
             use_container_width=True,
             hide_index=True,
             height=altura_tabela,
+        )
+
+    try:
+        pdf_carregamento = gerar_pdf_carregamento(numero, itens)
+    except Exception as exc:
+        st.error("Nao foi possivel gerar o PDF do carregamento.")
+        st.caption(str(exc))
+    else:
+        st.download_button(
+            "Imprimir carregamento",
+            data=pdf_carregamento,
+            file_name=f"carregamento_pedido_{numero or 'sem_numero'}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
         )
 
     if recebido:

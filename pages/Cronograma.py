@@ -1357,6 +1357,11 @@ def label_prazo(data_recebimento):
     hoje = pd.Timestamp.today().normalize().date()
     dias = (data_recebimento - hoje).days
 
+    if dias < 0:
+        atraso = abs(dias)
+        if atraso == 1:
+            return "Atrasado ha 1 dia", "danger"
+        return f"Atrasado ha {atraso} dias", "danger"
     if dias == 0:
         return "Hoje", "danger"
     if dias == 1:
@@ -1372,9 +1377,11 @@ def label_prazo(data_recebimento):
 
 def proximas_datas(df, limite=5):
     hoje = pd.Timestamp.today().normalize().date()
-    df_futuro = df[df["Data Recebimento"] >= hoje]
-    base = df_futuro if not df_futuro.empty else df
-    return resumo_por_data(base).head(limite)
+    resumo = resumo_por_data(df)
+    atrasadas = resumo[resumo["Data Recebimento"] < hoje].sort_values("Data Recebimento")
+    futuras = resumo[resumo["Data Recebimento"] >= hoje].sort_values("Data Recebimento")
+    base = pd.concat([atrasadas, futuras], ignore_index=True)
+    return base.head(limite)
 
 
 def render_proximas_entregas(proximas):

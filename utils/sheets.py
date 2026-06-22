@@ -51,6 +51,19 @@ def carregar_historico_recebimentos():
     return pd.DataFrame(dados)
 
 
+@st.cache_data(ttl=300)
+def carregar_volumetria():
+    planilha = abrir_planilha()
+
+    try:
+        aba = planilha.worksheet("volumetria")
+    except gspread.WorksheetNotFound:
+        aba = planilha.worksheet("Volumetria")
+
+    dados = aba.get_all_records(numericise_ignore=["all"])
+    return pd.DataFrame(dados)
+
+
 def localizar_pedido(numero_pedido):
     numero_pedido = str(numero_pedido or "").strip()
     if not numero_pedido:
