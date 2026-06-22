@@ -191,6 +191,27 @@ st.markdown(
         font-weight: 850 !important;
     }
 
+    .stButton > button:hover,
+    .stButton > button:focus,
+    div[data-testid="stTextInput"] input:focus {
+        border-color: #000000 !important;
+        color: #000000 !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    button,
+    [role="button"] {
+        box-shadow: none !important;
+    }
+
+    div[data-testid="stDataFrame"] button,
+    div[data-testid="stDataFrame"] [role="button"] {
+        background: #ffffff !important;
+        color: #000000 !important;
+        border-color: #000000 !important;
+    }
+
     @media (max-width: 900px) {
         .detail-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -309,7 +330,10 @@ def montar_mapa_volumetria():
     if volumetria.empty:
         return {}
 
-    coluna_codigo = encontrar_coluna(volumetria, ["Codigo", "Código", "Produto", "Referencia", "Referência"])
+    coluna_codigo = encontrar_coluna(volumetria, ["Codigo", "Código", "Referencia", "Referência"])
+    coluna_produto = encontrar_coluna(volumetria, ["Produto", "Produto volumetria", "Item", "Modelo"])
+    if coluna_codigo == coluna_produto:
+        coluna_codigo = None
     coluna_caixas = encontrar_coluna(
         volumetria,
         ["Volumetria", "Caixas por produto", "Caixas", "Qtd caixas", "Quantidade de caixas"],
@@ -322,7 +346,10 @@ def montar_mapa_volumetria():
     for _, linha in volumetria.iterrows():
         codigo = chave_codigo(linha.get(coluna_codigo, ""))
         if codigo and codigo not in mapa:
-            mapa[codigo] = str(linha.get(coluna_caixas, "")).strip() or "Nao cadastrado"
+            mapa[codigo] = {
+                "produto": str(linha.get(coluna_produto, "")).strip() if coluna_produto else "Nao cadastrado",
+                "caixas": str(linha.get(coluna_caixas, "")).strip() or "Nao cadastrado",
+            }
     return mapa
 
 
@@ -331,19 +358,19 @@ def preparar_linhas_pdf(numero_pedido, itens):
     col_codigo = encontrar_coluna(itens, ["Codigo", "Código"])
     col_descricao = encontrar_coluna(itens, ["Descricao", "Descrição"])
     col_qtde = encontrar_coluna(itens, ["Qtde", "Quantidade", "Qtd"])
-    col_grupo = encontrar_coluna(itens, ["Grupo"])
-
     linhas = []
     for _, item in itens.iterrows():
         codigo = str(item.get(col_codigo, "")).strip() if col_codigo else ""
-        volumetria = mapa_volumetria.get(chave_codigo(codigo), "Nao cadastrado")
+        dados_volumetria = mapa_volumetria.get(chave_codigo(codigo), {})
+        produto_volumetria = dados_volumetria.get("produto") or "Nao cadastrado"
+        volumetria = dados_volumetria.get("caixas") or "Nao cadastrado"
         linhas.append(
             [
                 numero_pedido,
                 codigo,
                 str(item.get(col_descricao, "")).strip() if col_descricao else "",
                 formatar_numero(item.get(col_qtde, "")) if col_qtde else "",
-                str(item.get(col_grupo, "")).strip() if col_grupo else "",
+                produto_volumetria,
                 volumetria,
                 "",
             ]
@@ -373,7 +400,7 @@ def gerar_pdf_carregamento(numero_pedido, itens):
     titulo_style.leading = 22
 
     linhas = preparar_linhas_pdf(numero_pedido, itens)
-    cabecalho = ["Numero do pedido", "Codigo", "Descricao", "Qtde", "Grupo", "Volumetria", "Conferencia"]
+    cabecalho = ["Numero do pedido", "Codigo", "Descricao", "Qtde", "Produto", "Volumetria", "Conferencia"]
     dados = [cabecalho]
     for linha in linhas:
         dados.append([Paragraph(escape(str(valor)), normal) for valor in linha])
@@ -409,7 +436,7 @@ def gerar_pdf_carregamento(numero_pedido, itens):
     tabela = Table(
         dados,
         repeatRows=1,
-        colWidths=[3.0 * cm, 2.2 * cm, 10.0 * cm, 1.4 * cm, 4.7 * cm, 2.5 * cm, 4.8 * cm],
+        colWidths=[3.0 * cm, 2.2 * cm, 9.4 * cm, 1.4 * cm, 5.3 * cm, 2.5 * cm, 4.8 * cm],
     )
     tabela.setStyle(
         TableStyle(
@@ -535,24 +562,25 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                                 color: #ffffff;
                                 border: 1px solid #000000;
                                 padding: 4px 5px;
-                                font-size: 10px;
+                                font-size: 10.8px;
                                 text-align: left;
                                 font-weight: 700;
                             }}
                             td {{
-                                min-height: 19px;
+                                min-height: 18px;
                                 border: 1px solid #000000;
-                                padding: 3px 5px;
-                                font-size: 9px;
+                                padding: 2px 4px;
+                                font-size: 9.8px;
+                                line-height: 1.08;
                                 vertical-align: middle;
                                 background: #ffffff;
                                 overflow-wrap: anywhere;
                             }}
                             th:nth-child(1), td:nth-child(1) {{ width: 11%; }}
                             th:nth-child(2), td:nth-child(2) {{ width: 10%; }}
-                            th:nth-child(3), td:nth-child(3) {{ width: 35%; }}
+                            th:nth-child(3), td:nth-child(3) {{ width: 32%; }}
                             th:nth-child(4), td:nth-child(4) {{ width: 6%; text-align: center; }}
-                            th:nth-child(5), td:nth-child(5) {{ width: 17%; }}
+                            th:nth-child(5), td:nth-child(5) {{ width: 20%; }}
                             th:nth-child(6), td:nth-child(6) {{ width: 10%; text-align: center; }}
                             th:nth-child(7), td:nth-child(7) {{ width: 11%; }}
                             @media print {{
@@ -579,7 +607,7 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                                     <th>Codigo</th>
                                     <th>Descricao</th>
                                     <th>Qtde</th>
-                                    <th>Grupo</th>
+                                    <th>Produto</th>
                                     <th>Volumetria</th>
                                     <th>Conferencia</th>
                                 </tr>
@@ -608,8 +636,8 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                 min-height: 42px;
                 border: 2px solid #000000;
                 border-radius: 7px;
-                background: #000000;
-                color: #ffffff;
+                background: #ffffff;
+                color: #000000;
                 font: 850 16px Arial, sans-serif;
                 cursor: pointer;
             }}
