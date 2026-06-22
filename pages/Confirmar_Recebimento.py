@@ -1,13 +1,11 @@
-import os
-import platform
-import subprocess
-import tempfile
+import base64
 from html import escape
 from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
@@ -443,21 +441,171 @@ def gerar_pdf_carregamento(numero_pedido, itens):
     return buffer.getvalue()
 
 
-def imprimir_pdf_padrao(pdf_bytes, nome_arquivo):
-    pasta = Path(tempfile.gettempdir()) / "consulta_pedidos_impressao"
-    pasta.mkdir(parents=True, exist_ok=True)
-    caminho_pdf = pasta / nome_arquivo
-    caminho_pdf.write_bytes(pdf_bytes)
+def imagem_base64(caminho):
+    return base64.b64encode(Path(caminho).read_bytes()).decode("ascii")
 
-    sistema = platform.system().lower()
-    if sistema == "windows":
-        os.startfile(str(caminho_pdf), "print")
-    elif sistema == "darwin":
-        subprocess.run(["lp", str(caminho_pdf)], check=True)
-    else:
-        subprocess.run(["lp", str(caminho_pdf)], check=True)
 
-    return caminho_pdf
+def render_botao_imprimir_romaneio(numero_pedido, itens):
+    linhas = preparar_linhas_pdf(numero_pedido, itens)
+    base_dir = Path(__file__).resolve().parents[1]
+    logo_trendx = imagem_base64(base_dir / "icones" / "romaneio-logo-trendx.png")
+    logo_simbolo = imagem_base64(base_dir / "icones" / "romaneio-logo-simbolo.png")
+
+    linhas_html = []
+    for linha in linhas:
+        linhas_html.append(
+            "<tr>"
+            + "".join(f"<td>{escape(str(valor))}</td>" for valor in linha)
+            + "</tr>"
+        )
+
+    tabela_html = "\n".join(linhas_html)
+    titulo = f"Romaneio de conferencia - Pedido: {escape(str(numero_pedido))}"
+
+    components.html(
+        f"""
+        <button id="botao-imprimir-romaneio" type="button">Imprimir carregamento</button>
+        <script>
+        const botao = document.getElementById("botao-imprimir-romaneio");
+        botao.addEventListener("click", () => {{
+            const janela = window.open("", "_blank", "width=1200,height=800");
+            if (!janela) {{
+                alert("O navegador bloqueou a janela de impressao. Libere pop-ups para imprimir.");
+                return;
+            }}
+            janela.document.open();
+            janela.document.write(`
+                <!doctype html>
+                <html>
+                    <head>
+                        <title>{titulo}</title>
+                        <style>
+                            @page {{
+                                size: A4 landscape;
+                                margin: 5mm;
+                            }}
+                            * {{
+                                box-sizing: border-box;
+                            }}
+                            body {{
+                                margin: 0;
+                                background: #ffffff;
+                                color: #000000;
+                                font-family: Arial, Helvetica, sans-serif;
+                            }}
+                            .topo {{
+                                display: grid;
+                                grid-template-columns: 190px 1fr 80px;
+                                align-items: center;
+                                gap: 12px;
+                                margin: 6px 0 8px 0;
+                            }}
+                            .logo-trendx {{
+                                width: 150px;
+                                height: auto;
+                            }}
+                            .logo-simbolo {{
+                                width: 44px;
+                                height: auto;
+                                justify-self: end;
+                            }}
+                            h1 {{
+                                margin: 0;
+                                text-align: center;
+                                font-size: 24px;
+                                line-height: 1.1;
+                                font-weight: 800;
+                            }}
+                            table {{
+                                width: 100%;
+                                border-collapse: collapse;
+                                table-layout: fixed;
+                                background: #ffffff;
+                            }}
+                            th {{
+                                background: #000000;
+                                color: #ffffff;
+                                border: 1px solid #000000;
+                                padding: 5px 4px;
+                                font-size: 10px;
+                                text-align: left;
+                                font-weight: 700;
+                            }}
+                            td {{
+                                height: 20px;
+                                border: 1px solid #000000;
+                                padding: 3px 4px;
+                                font-size: 9px;
+                                vertical-align: middle;
+                                background: #ffffff;
+                                overflow-wrap: anywhere;
+                            }}
+                            th:nth-child(1), td:nth-child(1) {{ width: 11%; }}
+                            th:nth-child(2), td:nth-child(2) {{ width: 10%; }}
+                            th:nth-child(3), td:nth-child(3) {{ width: 35%; }}
+                            th:nth-child(4), td:nth-child(4) {{ width: 6%; text-align: center; }}
+                            th:nth-child(5), td:nth-child(5) {{ width: 17%; }}
+                            th:nth-child(6), td:nth-child(6) {{ width: 10%; text-align: center; }}
+                            th:nth-child(7), td:nth-child(7) {{ width: 11%; }}
+                            @media print {{
+                                body {{
+                                    -webkit-print-color-adjust: exact;
+                                    print-color-adjust: exact;
+                                }}
+                            }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class="topo">
+                            <img class="logo-trendx" src="data:image/png;base64,{logo_trendx}">
+                            <h1>{titulo}</h1>
+                            <img class="logo-simbolo" src="data:image/png;base64,{logo_simbolo}">
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Numero do pedido</th>
+                                    <th>Codigo</th>
+                                    <th>Descricao</th>
+                                    <th>Qtde</th>
+                                    <th>Grupo</th>
+                                    <th>Volumetria</th>
+                                    <th>Conferencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {tabela_html}
+                            </tbody>
+                        </table>
+                        <script>
+                            window.onload = () => {{
+                                setTimeout(() => {{
+                                    window.focus();
+                                    window.print();
+                                }}, 250);
+                            }};
+                        <\\/script>
+                    </body>
+                </html>
+            `);
+            janela.document.close();
+        }});
+        </script>
+        <style>
+            #botao-imprimir-romaneio {{
+                width: 100%;
+                min-height: 42px;
+                border: 2px solid #000000;
+                border-radius: 7px;
+                background: #000000;
+                color: #ffffff;
+                font: 850 16px Arial, sans-serif;
+                cursor: pointer;
+            }}
+        </style>
+        """,
+        height=52,
+    )
 
 
 def render_pedido(itens):
@@ -524,15 +672,7 @@ def render_pedido(itens):
             height=altura_tabela,
         )
 
-    if st.button("Imprimir carregamento", key="imprimir_carregamento", use_container_width=True):
-        try:
-            pdf_carregamento = gerar_pdf_carregamento(numero, itens)
-            imprimir_pdf_padrao(pdf_carregamento, f"carregamento_pedido_{numero or 'sem_numero'}.pdf")
-        except Exception as exc:
-            st.error("Nao foi possivel imprimir o carregamento.")
-            st.caption(str(exc))
-        else:
-            st.success("Carregamento enviado para a impressora padrao.")
+    render_botao_imprimir_romaneio(numero, itens)
 
     if recebido:
         st.markdown(
