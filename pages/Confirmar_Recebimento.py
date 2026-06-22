@@ -1,8 +1,10 @@
+import base64
 from html import escape
 from io import BytesIO
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
@@ -397,6 +399,87 @@ def gerar_pdf_carregamento(numero_pedido, itens):
     return buffer.getvalue()
 
 
+def render_botao_imprimir_pdf(pdf_bytes, nome_arquivo):
+    pdf_base64 = base64.b64encode(pdf_bytes).decode("ascii")
+    nome_seguro = escape(nome_arquivo, quote=True)
+
+    components.html(
+        f"""
+        <button id="print-pdf-button" type="button">
+            Imprimir carregamento
+        </button>
+        <script>
+        const button = document.getElementById("print-pdf-button");
+        button.addEventListener("click", () => {{
+            const pdfBase64 = "{pdf_base64}";
+            const byteCharacters = atob(pdfBase64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {{
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }}
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], {{ type: "application/pdf" }});
+            const url = URL.createObjectURL(blob);
+            const printWindow = window.open("", "_blank");
+
+            if (!printWindow) {{
+                window.open(url, "_blank");
+                return;
+            }}
+
+            printWindow.document.write(`
+                <!doctype html>
+                <html>
+                    <head>
+                        <title>{nome_seguro}</title>
+                        <style>
+                            html, body {{
+                                margin: 0;
+                                width: 100%;
+                                height: 100%;
+                                overflow: hidden;
+                            }}
+                            iframe {{
+                                border: 0;
+                                width: 100%;
+                                height: 100%;
+                            }}
+                        </style>
+                    </head>
+                    <body>
+                        <iframe id="pdf-frame" src="${{url}}"></iframe>
+                        <script>
+                            const frame = document.getElementById("pdf-frame");
+                            frame.onload = () => {{
+                                setTimeout(() => {{
+                                    frame.contentWindow.focus();
+                                    frame.contentWindow.print();
+                                }}, 500);
+                            }};
+                        <\\/script>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }});
+        </script>
+        <style>
+            #print-pdf-button {{
+                width: 100%;
+                min-height: 42px;
+                border: 2px solid #000000;
+                border-radius: 7px;
+                background: #000000;
+                color: #ffffff;
+                font: 850 16px Arial, sans-serif;
+                cursor: pointer;
+            }}
+        </style>
+        """,
+        height=52,
+    )
+
+
 def render_pedido(itens):
     primeiro = itens.iloc[0]
     numero = str(primeiro.get("Numero do Pedido", "")).strip()
@@ -467,10 +550,12 @@ def render_pedido(itens):
         st.error("Nao foi possivel gerar o PDF do carregamento.")
         st.caption(str(exc))
     else:
+        nome_pdf = f"carregamento_pedido_{numero or 'sem_numero'}.pdf"
+        render_botao_imprimir_pdf(pdf_carregamento, nome_pdf)
         st.download_button(
-            "Imprimir carregamento",
+            "Baixar PDF",
             data=pdf_carregamento,
-            file_name=f"carregamento_pedido_{numero or 'sem_numero'}.pdf",
+            file_name=nome_pdf,
             mime="application/pdf",
             use_container_width=True,
         )
