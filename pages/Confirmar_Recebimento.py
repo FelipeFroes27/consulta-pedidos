@@ -385,7 +385,7 @@ def gerar_pdf_carregamento(numero_pedido, itens):
         [
             [
                 Image(str(logo_principal), width=4.2 * cm, height=1.02 * cm),
-                Paragraph(f"Romaneio de conferencia - Pedido: {escape(str(numero_pedido))}", titulo_style),
+                Paragraph(f"ROMANEIO DE CONFERÊNCIA - PEDIDO: {escape(str(numero_pedido))}", titulo_style),
                 Image(str(logo_simbolo), width=1.05 * cm, height=1.05 * cm),
             ]
         ],
@@ -460,7 +460,7 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
         )
 
     tabela_html = "\n".join(linhas_html)
-    titulo = f"Romaneio de conferencia - Pedido: {escape(str(numero_pedido))}"
+    titulo = f"ROMANEIO DE CONFERÊNCIA - PEDIDO: {escape(str(numero_pedido))}"
 
     components.html(
         f"""
@@ -482,7 +482,7 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                         <style>
                             @page {{
                                 size: A4 landscape;
-                                margin: 5mm;
+                                margin: 4mm 5mm 11mm 5mm;
                             }}
                             * {{
                                 box-sizing: border-box;
@@ -495,24 +495,24 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                             }}
                             .topo {{
                                 display: grid;
-                                grid-template-columns: 190px 1fr 80px;
+                                grid-template-columns: 145px 1fr 58px;
                                 align-items: center;
-                                gap: 12px;
-                                margin: 6px 0 8px 0;
+                                gap: 8px;
+                                margin: 2px 0 5px 0;
                             }}
                             .logo-trendx {{
-                                width: 150px;
+                                width: 116px;
                                 height: auto;
                             }}
                             .logo-simbolo {{
-                                width: 44px;
+                                width: 32px;
                                 height: auto;
                                 justify-self: end;
                             }}
                             h1 {{
                                 margin: 0;
                                 text-align: center;
-                                font-size: 24px;
+                                font-size: 18px;
                                 line-height: 1.1;
                                 font-weight: 800;
                             }}
@@ -521,21 +521,29 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                                 border-collapse: collapse;
                                 table-layout: fixed;
                                 background: #ffffff;
+                                page-break-inside: auto;
+                            }}
+                            thead {{
+                                display: table-header-group;
+                            }}
+                            tr {{
+                                break-inside: avoid;
+                                page-break-inside: avoid;
                             }}
                             th {{
                                 background: #000000;
                                 color: #ffffff;
                                 border: 1px solid #000000;
-                                padding: 5px 4px;
-                                font-size: 10px;
+                                padding: 4px 4px;
+                                font-size: 9px;
                                 text-align: left;
                                 font-weight: 700;
                             }}
                             td {{
-                                height: 20px;
+                                min-height: 18px;
                                 border: 1px solid #000000;
-                                padding: 3px 4px;
-                                font-size: 9px;
+                                padding: 2px 4px;
+                                font-size: 8.2px;
                                 vertical-align: middle;
                                 background: #ffffff;
                                 overflow-wrap: anywhere;
@@ -551,6 +559,9 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                                 body {{
                                     -webkit-print-color-adjust: exact;
                                     print-color-adjust: exact;
+                                }}
+                                .topo {{
+                                    margin-top: 0;
                                 }}
                             }}
                         </style>
