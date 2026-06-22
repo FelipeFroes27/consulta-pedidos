@@ -64,6 +64,19 @@ def carregar_volumetria():
     return pd.DataFrame(dados)
 
 
+@st.cache_data(ttl=300)
+def carregar_bd_produto():
+    planilha = abrir_planilha()
+
+    try:
+        aba = planilha.worksheet("Bd_Produto")
+    except gspread.WorksheetNotFound:
+        aba = planilha.worksheet("Bd_Produtos")
+
+    dados = aba.get_all_records(numericise_ignore=["all"])
+    return pd.DataFrame(dados)
+
+
 def localizar_pedido(numero_pedido):
     numero_pedido = str(numero_pedido or "").strip()
     if not numero_pedido:

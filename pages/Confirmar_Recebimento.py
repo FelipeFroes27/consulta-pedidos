@@ -13,7 +13,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
-from utils.sheets import carregar_volumetria, localizar_pedido, recebimento_ja_registrado, registrar_recebimento
+from utils.sheets import carregar_bd_produto, carregar_volumetria, localizar_pedido, recebimento_ja_registrado, registrar_recebimento
 
 
 st.set_page_config(
@@ -353,20 +353,50 @@ def montar_mapa_volumetria():
     return mapa
 
 
+def montar_mapa_bd_produto():
+    try:
+        bd_produto = carregar_bd_produto()
+    except Exception:
+        return {}
+
+    if bd_produto.empty:
+        return {}
+
+    coluna_codigo = encontrar_coluna(bd_produto, ["Codigo", "Código", "Cod", "Cód"])
+    coluna_referencia = encontrar_coluna(
+        bd_produto,
+        ["Referencia", "Referência", "Produto", "Produto referência", "Produto referencia"],
+    )
+
+    if coluna_codigo is None or coluna_referencia is None:
+        return {}
+
+    mapa = {}
+    for _, linha in bd_produto.iterrows():
+        codigo = chave_codigo(linha.get(coluna_codigo, ""))
+        referencia = str(linha.get(coluna_referencia, "")).strip()
+        if codigo and referencia and codigo not in mapa:
+            mapa[codigo] = referencia
+    return mapa
+
+
 def preparar_linhas_pdf(numero_pedido, itens):
     mapa_volumetria = montar_mapa_volumetria()
+    mapa_bd_produto = montar_mapa_bd_produto()
     col_codigo = encontrar_coluna(itens, ["Codigo", "Código"])
     col_descricao = encontrar_coluna(itens, ["Descricao", "Descrição"])
     col_qtde = encontrar_coluna(itens, ["Qtde", "Quantidade", "Qtd"])
     linhas = []
     for _, item in itens.iterrows():
         codigo = str(item.get(col_codigo, "")).strip() if col_codigo else ""
-        dados_volumetria = mapa_volumetria.get(chave_codigo(codigo), {})
+        codigo_chave = chave_codigo(codigo)
+        dados_volumetria = mapa_volumetria.get(codigo_chave, {})
         produto_volumetria = dados_volumetria.get("produto") or "Nao cadastrado"
         volumetria = dados_volumetria.get("caixas") or "Nao cadastrado"
+        if produto_volumetria == "Nao cadastrado":
+            produto_volumetria = mapa_bd_produto.get(codigo_chave, "Nao cadastrado")
         linhas.append(
             [
-                numero_pedido,
                 codigo,
                 str(item.get(col_descricao, "")).strip() if col_descricao else "",
                 formatar_numero(item.get(col_qtde, "")) if col_qtde else "",
@@ -400,7 +430,7 @@ def gerar_pdf_carregamento(numero_pedido, itens):
     titulo_style.leading = 22
 
     linhas = preparar_linhas_pdf(numero_pedido, itens)
-    cabecalho = ["Numero do pedido", "Codigo", "Descricao", "Qtde", "Produto", "Volumetria", "Conferencia"]
+    cabecalho = ["Codigo", "Descricao", "Qtde", "Produto", "Volumetria", "Conferencia"]
     dados = [cabecalho]
     for linha in linhas:
         dados.append([Paragraph(escape(str(valor)), normal) for valor in linha])
@@ -436,7 +466,7 @@ def gerar_pdf_carregamento(numero_pedido, itens):
     tabela = Table(
         dados,
         repeatRows=1,
-        colWidths=[3.0 * cm, 2.2 * cm, 9.4 * cm, 1.4 * cm, 5.3 * cm, 2.5 * cm, 4.8 * cm],
+        colWidths=[2.6 * cm, 11.0 * cm, 1.5 * cm, 7.0 * cm, 2.7 * cm, 3.8 * cm],
     )
     tabela.setStyle(
         TableStyle(
@@ -562,27 +592,26 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                                 color: #ffffff;
                                 border: 1px solid #000000;
                                 padding: 4px 5px;
-                                font-size: 10.8px;
+                                font-size: 12px;
                                 text-align: left;
                                 font-weight: 700;
                             }}
                             td {{
-                                min-height: 18px;
+                                min-height: 19px;
                                 border: 1px solid #000000;
                                 padding: 2px 4px;
-                                font-size: 9.8px;
-                                line-height: 1.08;
+                                font-size: 11px;
+                                line-height: 1.05;
                                 vertical-align: middle;
                                 background: #ffffff;
                                 overflow-wrap: anywhere;
                             }}
-                            th:nth-child(1), td:nth-child(1) {{ width: 11%; }}
-                            th:nth-child(2), td:nth-child(2) {{ width: 10%; }}
-                            th:nth-child(3), td:nth-child(3) {{ width: 32%; }}
-                            th:nth-child(4), td:nth-child(4) {{ width: 6%; text-align: center; }}
-                            th:nth-child(5), td:nth-child(5) {{ width: 20%; }}
-                            th:nth-child(6), td:nth-child(6) {{ width: 10%; text-align: center; }}
-                            th:nth-child(7), td:nth-child(7) {{ width: 11%; }}
+                            th:nth-child(1), td:nth-child(1) {{ width: 10%; }}
+                            th:nth-child(2), td:nth-child(2) {{ width: 38%; }}
+                            th:nth-child(3), td:nth-child(3) {{ width: 7%; text-align: center; }}
+                            th:nth-child(4), td:nth-child(4) {{ width: 24%; }}
+                            th:nth-child(5), td:nth-child(5) {{ width: 10%; text-align: center; }}
+                            th:nth-child(6), td:nth-child(6) {{ width: 11%; }}
                             @media print {{
                                 body {{
                                     -webkit-print-color-adjust: exact;
@@ -603,7 +632,6 @@ def render_botao_imprimir_romaneio(numero_pedido, itens):
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Numero do pedido</th>
                                     <th>Codigo</th>
                                     <th>Descricao</th>
                                     <th>Qtde</th>
