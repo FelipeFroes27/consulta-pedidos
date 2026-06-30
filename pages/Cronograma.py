@@ -252,11 +252,10 @@ def render_proximos(recebimentos, embarques):
     proximos_embarques = proximos_eventos(embarques, "embarque")
     eventos = pd.concat([proximos_recebimentos, proximos_embarques], ignore_index=True)
 
-    st.markdown('<div class="side-panel"><div class="section-title">Proximos eventos</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Proximos eventos</div>', unsafe_allow_html=True)
 
     if eventos.empty:
         st.markdown('<div class="empty">Nenhum evento futuro encontrado.</div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
         return
 
     eventos = eventos.sort_values(["Data Agenda", "Tipo"]).head(8)
@@ -276,15 +275,6 @@ def render_proximos(recebimentos, embarques):
             """,
             unsafe_allow_html=True,
         )
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-
-def formatar_tabela(df):
-    df = df.copy()
-    if "Data Agenda" in df.columns:
-        df["Data Agenda"] = df["Data Agenda"].map(formatar_data)
-    return df
 
 
 @st.dialog("Detalhes do dia", width="large")
@@ -445,7 +435,7 @@ st.markdown(
         align-items: flex-start;
         justify-content: space-between;
         gap: 20px;
-        margin-bottom: 1rem;
+        margin-bottom: .75rem;
     }
 
     .page-title h1 {
@@ -476,39 +466,40 @@ st.markdown(
     }
 
     .kpi-card,
-    .calendar-panel,
-    .side-panel,
+    div[data-testid="stVerticalBlockBorderWrapper"],
     div[data-testid="stDataFrame"] {
         border: 2px solid #000000;
-        border-radius: 12px;
+        border-radius: 14px;
         background: #ffffff;
         box-shadow: none;
     }
 
     .kpi-card {
-        min-height: 96px;
-        padding: 16px;
+        min-height: 74px;
+        padding: 12px 14px;
+        position: relative;
+        overflow: hidden;
     }
 
     .kpi-label {
         color: #333333;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 850;
         text-transform: uppercase;
     }
 
     .kpi-value {
-        margin-top: 8px;
+        margin-top: 6px;
         color: #000000;
-        font-size: 26px;
+        font-size: 24px;
         line-height: 1;
         font-weight: 900;
     }
 
     .kpi-note {
-        margin-top: 7px;
+        margin-top: 5px;
         color: #475467;
-        font-size: 12px;
+        font-size: 11px;
     }
 
     .kpi-recebimento {border-left: 8px solid #22c55e;}
@@ -516,9 +507,8 @@ st.markdown(
     .kpi-mes {border-left: 8px solid #2563eb;}
     .kpi-alerta {border-left: 8px solid #f59e0b;}
 
-    .calendar-panel,
-    .side-panel {
-        padding: 14px;
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        padding: 14px 16px 16px 16px;
     }
 
     .calendar-head {
@@ -531,15 +521,16 @@ st.markdown(
 
     .calendar-title {
         color: #000000;
-        font-size: 24px;
+        font-size: 28px;
         font-weight: 900;
         text-align: center;
+        line-height: 42px;
     }
 
     .weekday {
-        padding: 8px 4px;
+        padding: 10px 4px;
         border: 2px solid #000000;
-        border-radius: 8px;
+        border-radius: 10px;
         background: #000000;
         color: #ffffff;
         text-align: center;
@@ -557,10 +548,11 @@ st.markdown(
     }
 
     .calendar-day .stButton > button {
-        min-height: 98px !important;
-        padding: 8px !important;
+        min-height: 118px !important;
+        padding: 10px !important;
         white-space: pre-line !important;
         line-height: 1.35 !important;
+        font-size: 15px !important;
     }
 
     .day-empty .stButton > button {
@@ -619,9 +611,9 @@ st.markdown(
     .legend-misto::before {background: linear-gradient(135deg, #22c55e 0 49%, #ef4444 50% 100%);}
 
     .section-title {
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         color: #000000;
-        font-size: 17px;
+        font-size: 16px;
         font-weight: 900;
     }
 
@@ -630,10 +622,10 @@ st.markdown(
         grid-template-columns: minmax(0, 1fr) 48px;
         align-items: center;
         gap: 10px;
-        margin-bottom: 10px;
-        padding: 11px;
+        margin-bottom: 9px;
+        padding: 10px;
         border: 2px solid #000000;
-        border-radius: 10px;
+        border-radius: 12px;
         background: #ffffff;
     }
 
@@ -694,7 +686,7 @@ st.markdown(
         }
 
         .calendar-day .stButton > button {
-            min-height: 78px !important;
+            min-height: 86px !important;
             font-size: 12px !important;
         }
     }
@@ -783,113 +775,114 @@ with k3:
 with k4:
     render_kpi("Embarques do mes", numero(embarques_mes["NF"].nunique()), "Notas fiscais no calendario", "kpi-alerta")
 
-col_calendario, col_lateral = st.columns([2.35, .9], gap="medium")
+col_calendario, col_lateral = st.columns([3.35, 1], gap="medium")
 
 with col_calendario:
-    st.markdown('<div class="calendar-panel">', unsafe_allow_html=True)
-    h1, h2, h3 = st.columns([.45, 2.4, .45])
+    with st.container(border=True):
+        h1, h2, h3 = st.columns([.38, 2.4, .38])
 
-    with h1:
-        if st.button("‹", use_container_width=True, disabled=st.session_state.agenda_mes_idx <= 0):
-            st.session_state.agenda_mes_idx -= 1
-            st.rerun()
+        with h1:
+            if st.button("‹", use_container_width=True, disabled=st.session_state.agenda_mes_idx <= 0):
+                st.session_state.agenda_mes_idx -= 1
+                st.rerun()
 
-    with h2:
-        st.markdown(f'<div class="calendar-title">{escape(mes_formatado(mes_selecionado))}</div>', unsafe_allow_html=True)
+        with h2:
+            st.markdown(f'<div class="calendar-title">{escape(mes_formatado(mes_selecionado))}</div>', unsafe_allow_html=True)
 
-    with h3:
-        if st.button("›", use_container_width=True, disabled=st.session_state.agenda_mes_idx >= len(meses) - 1):
-            st.session_state.agenda_mes_idx += 1
-            st.rerun()
+        with h3:
+            if st.button("›", use_container_width=True, disabled=st.session_state.agenda_mes_idx >= len(meses) - 1):
+                st.session_state.agenda_mes_idx += 1
+                st.rerun()
 
-    semana_header = st.columns(7)
-    for indice, dia in enumerate(DIAS_SEMANA):
-        with semana_header[indice]:
-            st.markdown(f'<div class="weekday">{dia}</div>', unsafe_allow_html=True)
+        semana_header = st.columns(7)
+        for indice, dia in enumerate(DIAS_SEMANA):
+            with semana_header[indice]:
+                st.markdown(f'<div class="weekday">{dia}</div>', unsafe_allow_html=True)
 
-    calendario = calendar.Calendar(firstweekday=0)
-    for semana in calendario.monthdatescalendar(mes_selecionado.year, mes_selecionado.month):
-        cols = st.columns(7)
-        for indice, data in enumerate(semana):
-            recebimentos_dia, embarques_dia = resumo_data(recebimentos, embarques, data)
-            tem_recebimento = not recebimentos_dia.empty
-            tem_embarque = not embarques_dia.empty
-            fora_mes = data.month != mes_selecionado.month
+        calendario = calendar.Calendar(firstweekday=0)
+        for semana in calendario.monthdatescalendar(mes_selecionado.year, mes_selecionado.month):
+            cols = st.columns(7)
+            for indice, data in enumerate(semana):
+                recebimentos_dia, embarques_dia = resumo_data(recebimentos, embarques, data)
+                tem_recebimento = not recebimentos_dia.empty
+                tem_embarque = not embarques_dia.empty
+                fora_mes = data.month != mes_selecionado.month
 
-            classes = ["calendar-day"]
-            if fora_mes:
-                classes.append("day-empty")
-            elif tem_recebimento and tem_embarque:
-                classes.append("day-misto")
-            elif tem_recebimento:
-                classes.append("day-recebimento")
-            elif tem_embarque:
-                classes.append("day-embarque")
-            else:
-                classes.append("day-empty")
-
-            if data == hoje:
-                classes.append("day-today")
-
-            texto_botao = f"{data.day}"
-            if not fora_mes:
-                indicadores = []
-                if tem_recebimento:
-                    indicadores.append(f"R {recebimentos_dia['Pedido'].nunique()}")
-                if tem_embarque:
-                    indicadores.append(f"E {embarques_dia['NF'].nunique()}")
-                if indicadores:
-                    texto_botao += "\n" + "\n".join(indicadores)
-
-            with cols[indice]:
-                chave_dia = f"cal_{data.strftime('%Y_%m_%d')}"
-                if "day-misto" in classes:
-                    estilo_botao = "background: linear-gradient(135deg, #ecfdf5 0 49%, #fff1f2 50% 100%) !important; border-color: #000000 !important; color: #000000 !important;"
-                elif "day-recebimento" in classes:
-                    estilo_botao = "background: #ecfdf5 !important; border-color: #16a34a !important; color: #000000 !important;"
-                elif "day-embarque" in classes:
-                    estilo_botao = "background: #fff1f2 !important; border-color: #dc2626 !important; color: #000000 !important;"
+                classes = ["calendar-day"]
+                if fora_mes:
+                    classes.append("day-empty")
+                elif tem_recebimento and tem_embarque:
+                    classes.append("day-misto")
+                elif tem_recebimento:
+                    classes.append("day-recebimento")
+                elif tem_embarque:
+                    classes.append("day-embarque")
                 else:
-                    estilo_botao = "background: #ffffff !important; border-color: #d0d5dd !important; color: #98a2b3 !important;"
+                    classes.append("day-empty")
 
                 if data == hoje:
-                    estilo_botao += " outline: 3px solid #2563eb !important; outline-offset: 1px !important;"
+                    classes.append("day-today")
 
-                st.markdown(
-                    f"""
-                    <style>
-                    .st-key-{chave_dia} button {{
-                        min-height: 98px !important;
-                        padding: 8px !important;
-                        white-space: pre-line !important;
-                        line-height: 1.35 !important;
-                        {estilo_botao}
-                    }}
-                    </style>
-                    """,
-                    unsafe_allow_html=True,
-                )
-                clicou = st.button(
-                    texto_botao,
-                    key=chave_dia,
-                    use_container_width=True,
-                    disabled=fora_mes,
-                )
+                texto_botao = f"{data.day}"
+                if not fora_mes:
+                    indicadores = []
+                    if tem_recebimento:
+                        indicadores.append(f"R {recebimentos_dia['Pedido'].nunique()}")
+                    if tem_embarque:
+                        indicadores.append(f"E {embarques_dia['NF'].nunique()}")
+                    if indicadores:
+                        texto_botao += "\n" + "\n".join(indicadores)
 
-                if clicou:
-                    abrir_detalhe_dia(data, recebimentos, embarques)
+                with cols[indice]:
+                    chave_dia = f"cal_{data.strftime('%Y_%m_%d')}"
+                    if "day-misto" in classes:
+                        estilo_botao = "background: linear-gradient(135deg, #ecfdf5 0 49%, #fff1f2 50% 100%) !important; border-color: #000000 !important; color: #000000 !important;"
+                    elif "day-recebimento" in classes:
+                        estilo_botao = "background: #ecfdf5 !important; border-color: #16a34a !important; color: #000000 !important;"
+                    elif "day-embarque" in classes:
+                        estilo_botao = "background: #fff1f2 !important; border-color: #dc2626 !important; color: #000000 !important;"
+                    else:
+                        estilo_botao = "background: #ffffff !important; border-color: #d0d5dd !important; color: #98a2b3 !important;"
 
-    st.markdown(
-        """
-        <div class="legend-row">
-            <span class="legend-dot legend-recebimento">Recebimento</span>
-            <span class="legend-dot legend-embarque">Embarque</span>
-            <span class="legend-dot legend-misto">Recebimento e embarque</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
+                    if data == hoje:
+                        estilo_botao += " outline: 3px solid #2563eb !important; outline-offset: 1px !important;"
+
+                    st.markdown(
+                        f"""
+                        <style>
+                        .st-key-{chave_dia} button {{
+                            min-height: 118px !important;
+                            padding: 10px !important;
+                            white-space: pre-line !important;
+                            line-height: 1.35 !important;
+                            font-size: 15px !important;
+                            {estilo_botao}
+                        }}
+                        </style>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    clicou = st.button(
+                        texto_botao,
+                        key=chave_dia,
+                        use_container_width=True,
+                        disabled=fora_mes,
+                    )
+
+                    if clicou:
+                        abrir_detalhe_dia(data, recebimentos, embarques)
+
+        st.markdown(
+            """
+            <div class="legend-row">
+                <span class="legend-dot legend-recebimento">Recebimento</span>
+                <span class="legend-dot legend-embarque">Embarque</span>
+                <span class="legend-dot legend-misto">Recebimento e embarque</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 with col_lateral:
-    render_proximos(recebimentos, embarques)
+    with st.container(border=True):
+        render_proximos(recebimentos, embarques)
