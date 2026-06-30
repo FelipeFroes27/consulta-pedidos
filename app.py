@@ -183,8 +183,7 @@ with st.sidebar:
     st.page_link("app.py", label="Início")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
     st.page_link("pages/Confirmar_Recebimento.py", label="Confirmar Recebimento")
-    st.page_link("pages/Cronograma.py", label="Recebimentos")
-    st.page_link("pages/Embarques.py", label="Embarques")
+    st.page_link("pages/Cronograma.py", label="Agenda")
 
 logo_branco = base64.b64encode(Path("Logo Branco.bmp").read_bytes()).decode("utf-8")
 logo_preto = base64.b64encode(Path("logo preto goper.png").read_bytes()).decode("utf-8")
@@ -214,12 +213,8 @@ st.markdown(
                 <span>Consulta o pedido e registra a data de recebimento no Histórico.</span>
             </div>
             <div class="home-section">
-                Aba Recebimentos
-                <span>Mostra próximos recebimentos, alertas por prazo, fornecedores e gráficos de recebimento.</span>
-            </div>
-            <div class="home-section">
-                Aba Embarques
-                <span>Acompanha próximas saídas, volumes, transportadoras e análises dos embarques programados.</span>
+                Aba Agenda
+                <span>Calendário mensal com recebimentos e embarques, com detalhe ao clicar no dia.</span>
             </div>
         </div>
     </div>
