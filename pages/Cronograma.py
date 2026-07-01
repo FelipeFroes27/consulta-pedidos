@@ -728,9 +728,9 @@ st.markdown(
         display: inline-block;
     }
 
-    .legend-recebimento::before {background: #22c55e;}
-    .legend-embarque::before {background: #ef4444;}
-    .legend-misto::before {background: linear-gradient(135deg, #22c55e 0 49%, #ef4444 50% 100%);}
+    .legend-recebimento::before {background: #bbf7d0;}
+    .legend-embarque::before {background: #fecdd3;}
+    .legend-misto::before {background: linear-gradient(135deg, #bbf7d0 0 49%, #fecdd3 50% 100%);}
 
     .section-title {
         margin: 0 0 12px 0;
