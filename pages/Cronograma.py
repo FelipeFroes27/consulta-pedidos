@@ -30,7 +30,7 @@ MESES_PT = {
     12: "Dezembro",
 }
 
-DIAS_SEMANA = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"]
+DIAS_SEMANA = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"]
 
 
 def normalizar_coluna(nome):
@@ -199,11 +199,46 @@ def label_prazo(data):
     return f"Em {dias} dias"
 
 
+def icone_svg(tipo):
+    icones = {
+        "recebimento": """
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v12"></path>
+                <path d="m7 10 5 5 5-5"></path>
+                <path d="M5 21h14"></path>
+            </svg>
+        """,
+        "embarque": """
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 21V9"></path>
+                <path d="m7 14 5-5 5 5"></path>
+                <path d="M5 21h14"></path>
+            </svg>
+        """,
+        "caixa": """
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 7h18v14H3z"></path>
+                <path d="M3 7l3-4h12l3 4"></path>
+                <path d="M12 3v18"></path>
+            </svg>
+        """,
+        "caminhao": """
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 6h11v10H3z"></path>
+                <path d="M14 10h4l3 3v3h-7z"></path>
+                <circle cx="7" cy="18" r="2"></circle>
+                <circle cx="17" cy="18" r="2"></circle>
+            </svg>
+        """,
+    }
+    return icones.get(tipo, icones["caixa"])
+
+
 def render_kpi(titulo, valor, nota, classe, icone):
     st.markdown(
         f"""
         <div class="kpi-card {classe}">
-            <div class="kpi-icon"><span>{escape(icone)}</span></div>
+            <div class="kpi-icon">{icone_svg(icone)}</div>
             <div>
                 <div class="kpi-label">{escape(titulo)}</div>
                 <div class="kpi-value">{escape(str(valor))}</div>
@@ -255,7 +290,10 @@ def render_proximos(recebimentos, embarques):
     proximos_embarques = proximos_eventos(embarques, "embarque")
     eventos = pd.concat([proximos_recebimentos, proximos_embarques], ignore_index=True)
 
-    st.markdown('<div class="section-title">Proximos eventos</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="events-head"><div class="section-title">Proximos eventos</div><button type="button">Ver todos</button></div>',
+        unsafe_allow_html=True,
+    )
 
     if eventos.empty:
         st.markdown('<div class="empty">Nenhum evento futuro encontrado.</div>', unsafe_allow_html=True)
@@ -265,17 +303,20 @@ def render_proximos(recebimentos, embarques):
     for _, linha in eventos.iterrows():
         tipo = "Recebimento" if linha["Tipo"] == "recebimento" else "Embarque"
         classe = "event-recebimento" if linha["Tipo"] == "recebimento" else "event-embarque"
-        icone = "R" if linha["Tipo"] == "recebimento" else "E"
+        icone = "recebimento" if linha["Tipo"] == "recebimento" else "embarque"
+        unidade = "pedido" if linha["Tipo"] == "recebimento" and int(linha["Qtd"]) == 1 else "pedidos"
+        if linha["Tipo"] == "embarque":
+            unidade = "nota" if int(linha["Qtd"]) == 1 else "notas"
         st.markdown(
             f"""
             <div class="mini-event {classe}">
-                <div class="mini-event-icon"><span>{escape(icone)}</span></div>
+                <div class="mini-event-icon">{icone_svg(icone)}</div>
                 <div>
                     <strong>{escape(tipo)}</strong>
                     <span>{escape(label_prazo(linha["Data Agenda"]))} - {formatar_data(linha["Data Agenda"])}</span>
                     <small title="{escape(str(linha["Titulo"]))}">{escape(str(linha["Titulo"]))}</small>
                 </div>
-                <b>{numero(linha["Qtd"])}</b>
+                <div class="mini-event-total"><b>{numero(linha["Qtd"])}</b><span>{escape(unidade)}</span></div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -428,9 +469,11 @@ st.markdown(
 
     .block-container,
     [data-testid="stMainBlockContainer"] {
-        max-width: 1680px;
-        padding-top: 1.7rem;
-        padding-bottom: 1.25rem;
+        max-width: 1900px;
+        padding-top: .25rem;
+        padding-left: .75rem;
+        padding-right: .75rem;
+        padding-bottom: 1rem;
     }
 
     .sidebar-logo {
@@ -453,93 +496,114 @@ st.markdown(
         align-items: flex-start;
         justify-content: space-between;
         gap: 20px;
-        margin: 0 0 1.05rem 0;
-        padding: 8px 0 2px 0;
+        margin: 0 0 1.35rem 0;
+        padding: 0;
     }
 
     .page-title h1 {
         margin: 0;
         color: #000000;
-        font-size: 34px;
+        font-size: 32px;
         line-height: 1.05;
         font-weight: 900;
         letter-spacing: 0;
     }
 
     .page-title p {
-        margin: 18px 0 0 0;
+        margin: 8px 0 0 0;
         color: #333333;
-        font-size: 14px;
+        font-size: 12px;
     }
 
     .page-logos {
         display: flex;
         align-items: center;
-        gap: 18px;
+        gap: 14px;
         padding-top: 2px;
+        color: #000000;
+        font-size: 28px;
+        font-weight: 900;
+        letter-spacing: .5px;
     }
 
     .page-logos img {
-        max-height: 30px;
-        max-width: 128px;
+        max-height: 36px;
+        max-width: 158px;
         object-fit: contain;
     }
 
     .page-logos .goper-mark {
-        max-height: 34px;
-        max-width: 34px;
+        max-height: 36px;
+        max-width: 36px;
+    }
+
+    .logo-divider {
+        width: 3px;
+        height: 34px;
+        background: #000000;
+        display: inline-block;
+    }
+
+    .goper-word {
+        font-size: 26px;
+        font-weight: 900;
+        line-height: 1;
     }
 
     .kpi-card,
     div[data-testid="stVerticalBlockBorderWrapper"],
     div[data-testid="stDataFrame"] {
-        border: 2px solid #000000;
-        border-radius: 14px;
+        border: 3px solid #000000;
+        border-radius: 8px;
         background: #ffffff;
         box-shadow: none;
     }
 
     .kpi-card {
-        min-height: 88px;
-        padding: 13px 18px;
+        min-height: 100px;
+        padding: 16px 22px;
         position: relative;
         overflow: hidden;
         display: grid;
-        grid-template-columns: 40px 1fr;
+        grid-template-columns: 66px 1fr;
         align-items: center;
-        gap: 12px;
+        gap: 18px;
     }
 
     .kpi-icon {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 36px;
-        height: 36px;
+        width: 62px;
+        height: 62px;
         border: 2px solid #000000;
-        border-radius: 10px;
-        background: #000000;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: 950;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #000000;
     }
 
-    .kpi-icon span {
-        display: block;
-        line-height: 1;
+    .kpi-icon svg,
+    .mini-event-icon svg {
+        width: 34px;
+        height: 34px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.25;
+        stroke-linecap: round;
+        stroke-linejoin: round;
     }
 
     .kpi-label {
-        color: #333333;
-        font-size: 11px;
+        color: #000000;
+        font-size: 15px;
         font-weight: 850;
-        text-transform: uppercase;
+        text-transform: none;
     }
 
     .kpi-value {
-        margin-top: 4px;
+        margin-top: 6px;
         color: #000000;
-        font-size: 28px;
+        font-size: 30px;
         line-height: 1;
         font-weight: 900;
     }
@@ -552,11 +616,11 @@ st.markdown(
 
     .kpi-recebimento {border-left: 8px solid #22c55e;}
     .kpi-embarque {border-left: 8px solid #ef4444;}
-    .kpi-mes {border-left: 8px solid #2563eb;}
-    .kpi-alerta {border-left: 8px solid #f59e0b;}
+    .kpi-mes {border-left: 8px solid #22c55e;}
+    .kpi-alerta {border-left: 8px solid #ef4444;}
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        padding: 16px 18px;
+        padding: 10px 12px;
     }
 
     .calendar-head {
@@ -569,26 +633,26 @@ st.markdown(
 
     .calendar-title {
         color: #000000;
-        font-size: 30px;
+        font-size: 28px;
         font-weight: 900;
         text-align: center;
-        line-height: 40px;
+        line-height: 46px;
     }
 
     .weekday {
-        padding: 13px 4px;
+        padding: 11px 4px;
         border: 2px solid #000000;
-        border-radius: 10px;
+        border-radius: 7px;
         background: #000000;
         color: #ffffff;
         text-align: center;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 900;
     }
 
     .stButton > button {
-        border: 2px solid #000000 !important;
-        border-radius: 10px !important;
+        border: 3px solid #000000 !important;
+        border-radius: 8px !important;
         background: #ffffff !important;
         color: #000000 !important;
         box-shadow: none !important;
@@ -596,8 +660,8 @@ st.markdown(
     }
 
     .calendar-day .stButton > button {
-        min-height: 134px !important;
-        padding: 11px !important;
+        min-height: 116px !important;
+        padding: 10px !important;
         white-space: pre-line !important;
         line-height: 1.35 !important;
         font-size: 15px !important;
@@ -609,17 +673,17 @@ st.markdown(
     .day-empty .stButton > button {
         background: #ffffff !important;
         color: #98a2b3 !important;
-        border-color: #d0d5dd !important;
+        border-color: #000000 !important;
     }
 
     .day-recebimento .stButton > button {
-        background: #ecfdf5 !important;
-        border-color: #16a34a !important;
+        background: #ffffff !important;
+        border-color: #000000 !important;
     }
 
     .day-embarque .stButton > button {
-        background: #fff1f2 !important;
-        border-color: #dc2626 !important;
+        background: #ffffff !important;
+        border-color: #000000 !important;
     }
 
     .day-misto .stButton > button {
@@ -662,21 +726,40 @@ st.markdown(
     .legend-misto::before {background: linear-gradient(135deg, #22c55e 0 49%, #ef4444 50% 100%);}
 
     .section-title {
-        margin-bottom: 18px;
+        margin: 0 0 12px 0;
         color: #000000;
-        font-size: 20px;
+        font-size: 18px;
+        font-weight: 900;
+    }
+
+    .events-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .events-head button {
+        border: 2px solid #000000;
+        border-radius: 6px;
+        background: #ffffff;
+        color: #000000;
+        min-height: 30px;
+        padding: 0 12px;
+        font-size: 11px;
         font-weight: 900;
     }
 
     .mini-event {
         display: grid;
-        grid-template-columns: 36px minmax(0, 1fr) 36px;
+        grid-template-columns: 52px minmax(0, 1fr) 54px;
         align-items: center;
-        gap: 11px;
-        margin-bottom: 12px;
-        padding: 15px 13px;
-        border: 2px solid #000000;
-        border-radius: 14px;
+        gap: 12px;
+        margin-bottom: 8px;
+        padding: 9px 10px;
+        border: 3px solid #000000;
+        border-radius: 7px;
         background: #ffffff;
     }
 
@@ -684,14 +767,12 @@ st.markdown(
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 34px;
-        height: 34px;
+        width: 50px;
+        height: 50px;
         border: 2px solid #000000;
-        border-radius: 10px;
-        background: #000000;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: 950;
+        border-radius: 7px;
+        background: #ffffff;
+        color: #000000;
     }
 
     .mini-event strong {
@@ -703,26 +784,41 @@ st.markdown(
     .mini-event span,
     .mini-event small {
         display: block;
-        margin-top: 3px;
+        margin-top: 2px;
         color: #475467;
-        font-size: 12px;
+        font-size: 11px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
-    .mini-event b {
-        color: #000000;
-        font-size: 18px;
+    .mini-event-total {
         text-align: right;
+        color: #000000;
+    }
+
+    .mini-event-total b {
+        display: block;
+        color: #000000;
+        font-size: 24px;
+        line-height: 1;
+        font-weight: 900;
+    }
+
+    .mini-event-total span {
+        display: block;
+        color: #344054;
+        font-size: 10px;
+        font-weight: 750;
+        margin-top: 3px;
     }
 
     .event-recebimento {
-        background: #ecfdf5;
+        background: #ffffff;
         border-left: 8px solid #22c55e;
     }
     .event-embarque {
-        background: #fff1f2;
+        background: #ffffff;
         border-left: 8px solid #ef4444;
     }
 
@@ -766,106 +862,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+if "menu_lateral_aberto" not in st.session_state:
+    st.session_state.menu_lateral_aberto = False
+
 render_menu_lateral()
-
-menu_aberto = st.session_state.get("menu_lateral_aberto", True)
-layout_main_css = (
-    """
-    [data-testid="stAppViewContainer"] > .main {
-        margin-left: 18rem !important;
-        width: calc(100vw - 18rem) !important;
-    }
-
-    .block-container,
-    [data-testid="stMainBlockContainer"] {
-        max-width: calc(100vw - 20.5rem) !important;
-        margin-left: 18rem !important;
-        margin-right: 0 !important;
-        padding-left: 1.25rem !important;
-        padding-right: 1.25rem !important;
-        padding-top: 1.7rem !important;
-    }
-    """
-    if menu_aberto
-    else """
-    [data-testid="stAppViewContainer"] > .main {
-        margin-left: 0 !important;
-        width: 100vw !important;
-    }
-
-    .block-container,
-    [data-testid="stMainBlockContainer"] {
-        max-width: calc(100vw - 2.5rem) !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
-        padding-left: 1.25rem !important;
-        padding-right: 1.25rem !important;
-        padding-top: 1.7rem !important;
-    }
-    """
-)
-
-st.markdown(
-    "<style>\n"
-    + layout_main_css
-    + """
-
-    [data-testid="stSidebar"] {
-        background: #070707 !important;
-        border-right: 2px solid #000000 !important;
-    }
-
-    [data-testid="stSidebar"] > div,
-    [data-testid="stSidebar"] [data-testid="stSidebarUserContent"],
-    [data-testid="stSidebarContent"] {
-        background: #070707 !important;
-    }
-
-    [data-testid="stSidebar"] a {
-        margin: 8px 14px !important;
-        padding: 12px 14px !important;
-        border: 2px solid #ffffff !important;
-        border-radius: 12px !important;
-        background: #070707 !important;
-        color: #ffffff !important;
-        font-weight: 900 !important;
-    }
-
-    [data-testid="stSidebar"] a:hover {
-        background: #ffffff !important;
-        color: #000000 !important;
-    }
-
-    [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] label {
-        color: #ffffff !important;
-    }
-
-    .sidebar-logo {
-        justify-content: flex-start;
-        padding: 26px 18px 22px 18px;
-    }
-
-    .sidebar-logo img {
-        background: transparent !important;
-        max-height: 34px;
-    }
-
-    .st-key-menu_lateral_toggle button {
-        background: #000000 !important;
-        color: #ffffff !important;
-        border: 2px solid #000000 !important;
-    }
-
-    .st-key-menu_lateral_toggle button:hover {
-        background: #ffffff !important;
-        color: #000000 !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
 
 with st.sidebar:
     st.markdown('<div class="sidebar-logo">', unsafe_allow_html=True)
@@ -888,7 +888,9 @@ st.markdown(
         </div>
         <div class="page-logos">
             <img src="data:image/bmp;base64,{logo_branco}" alt="Trendx">
+            <span class="logo-divider"></span>
             <img class="goper-mark" src="data:image/png;base64,{logo_goper}" alt="Goper">
+            <span class="goper-word">GOPER</span>
         </div>
     </div>
     """,
@@ -936,13 +938,13 @@ recebimentos_hoje, embarques_hoje = resumo_data(recebimentos, embarques, hoje)
 
 k1, k2, k3, k4 = st.columns(4)
 with k1:
-    render_kpi("Recebimentos hoje", numero(recebimentos_hoje["Pedido"].nunique()), "Pedidos previstos", "kpi-recebimento", "R")
+    render_kpi("Recebimentos hoje", numero(recebimentos_hoje["Pedido"].nunique()), "Pedidos previstos", "kpi-recebimento", "recebimento")
 with k2:
-    render_kpi("Embarques hoje", numero(embarques_hoje["NF"].nunique()), "Notas fiscais previstas", "kpi-embarque", "E")
+    render_kpi("Embarques hoje", numero(embarques_hoje["NF"].nunique()), "Notas fiscais previstas", "kpi-embarque", "embarque")
 with k3:
-    render_kpi("Recebimentos do mes", numero(recebimentos_mes["Pedido"].nunique()), "Pedidos no calendario", "kpi-mes", "M")
+    render_kpi("Recebimentos do mes", numero(recebimentos_mes["Pedido"].nunique()), "Pedidos no calendario", "kpi-mes", "caixa")
 with k4:
-    render_kpi("Embarques do mes", numero(embarques_mes["NF"].nunique()), "Notas fiscais no calendario", "kpi-alerta", "N")
+    render_kpi("Embarques do mes", numero(embarques_mes["NF"].nunique()), "Notas fiscais no calendario", "kpi-alerta", "caminhao")
 
 col_calendario, col_lateral = st.columns([3.35, 1], gap="medium")
 
@@ -1002,6 +1004,16 @@ with col_calendario:
                     if indicadores:
                         texto_botao += "\n" + "\n".join(indicadores)
 
+                texto_botao = f"{data.day}"
+                if not fora_mes:
+                    marcadores_dia = []
+                    if tem_recebimento:
+                        marcadores_dia.append(f"R {recebimentos_dia['Pedido'].nunique()}")
+                    if tem_embarque:
+                        marcadores_dia.append(f"E {embarques_dia['NF'].nunique()}")
+                    if marcadores_dia:
+                        texto_botao += "\n\n" + "    ".join(marcadores_dia)
+
                 with cols[indice]:
                     chave_dia = f"cal_{data.strftime('%Y_%m_%d')}"
                     if "day-misto" in classes:
@@ -1012,6 +1024,8 @@ with col_calendario:
                         estilo_botao = "background: #fff1f2 !important; border-color: #dc2626 !important; color: #000000 !important;"
                     else:
                         estilo_botao = "background: #ffffff !important; border-color: #d0d5dd !important; color: #98a2b3 !important;"
+
+                    estilo_botao = "background: #ffffff !important; border-color: #000000 !important; color: #000000 !important;"
 
                     if data == hoje:
                         estilo_botao += " outline: 3px solid #2563eb !important; outline-offset: 1px !important;"
@@ -1024,7 +1038,8 @@ with col_calendario:
                             padding: 11px !important;
                             white-space: pre-line !important;
                             line-height: 1.35 !important;
-                            font-size: 15px !important;
+                            font-size: 18px !important;
+                            font-weight: 800 !important;
                             {estilo_botao}
                         }}
                         </style>
