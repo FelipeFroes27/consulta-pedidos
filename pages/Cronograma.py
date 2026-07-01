@@ -673,7 +673,7 @@ st.markdown(
     }
 
     .calendar-day .stButton > button {
-        min-height: 92px !important;
+        min-height: 116px !important;
         padding: 8px !important;
         white-space: pre-line !important;
         line-height: 1.25 !important;
@@ -1117,7 +1117,7 @@ with col_calendario:
                         f"""
                         <style>
                         .st-key-{chave_dia} button {{
-                            min-height: 88px !important;
+                            min-height: 126px !important;
                             padding: 8px !important;
                             white-space: pre-line !important;
                             line-height: 1.25 !important;
