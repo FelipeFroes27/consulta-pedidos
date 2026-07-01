@@ -189,21 +189,17 @@ def label_prazo(data):
 
 
 def icone_svg(tipo):
+    imagens = {
+        "recebimento": "receber.png",
+        "embarque": "entrega-rapida.png",
+    }
+    if tipo in imagens:
+        caminho = Path(imagens[tipo])
+        if caminho.exists():
+            imagem = base64.b64encode(caminho.read_bytes()).decode("utf-8")
+            return f'<img class="agenda-icon-img" src="data:image/png;base64,{imagem}" alt="{escape(tipo)}">'
+
     icones = {
-        "recebimento": """
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3v12"></path>
-                <path d="m7 10 5 5 5-5"></path>
-                <path d="M5 21h14"></path>
-            </svg>
-        """,
-        "embarque": """
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 21V9"></path>
-                <path d="m7 14 5-5 5 5"></path>
-                <path d="M5 21h14"></path>
-            </svg>
-        """,
         "caixa": """
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M3 7h18v14H3z"></path>
@@ -596,6 +592,13 @@ st.markdown(
         stroke-linejoin: round;
     }
 
+    .agenda-icon-img {
+        width: 36px;
+        height: 36px;
+        object-fit: contain;
+        display: block;
+    }
+
     .kpi-label {
         color: #000000;
         font-size: 15px;
@@ -680,17 +683,17 @@ st.markdown(
     }
 
     .day-recebimento .stButton > button {
-        background: #ecfdf5 !important;
+        background: #bbf7d0 !important;
         border-color: #000000 !important;
     }
 
     .day-embarque .stButton > button {
-        background: #fff1f2 !important;
+        background: #fecdd3 !important;
         border-color: #000000 !important;
     }
 
     .day-misto .stButton > button {
-        background: linear-gradient(135deg, #ecfdf5 0 50%, #fff1f2 50% 100%) !important;
+        background: linear-gradient(135deg, #bbf7d0 0 50%, #fecdd3 50% 100%) !important;
         border-color: #000000 !important;
     }
 
@@ -1092,11 +1095,11 @@ with col_calendario:
                 with cols[indice]:
                     chave_dia = f"cal_{data.strftime('%Y_%m_%d')}"
                     if "day-misto" in classes:
-                        estilo_botao = "background: linear-gradient(135deg, #ecfdf5 0 50%, #fff1f2 50% 100%) !important; border-color: #000000 !important; color: #000000 !important;"
+                        estilo_botao = "background: linear-gradient(135deg, #bbf7d0 0 50%, #fecdd3 50% 100%) !important; border-color: #000000 !important; color: #000000 !important;"
                     elif "day-recebimento" in classes:
-                        estilo_botao = "background: #ecfdf5 !important; border-color: #000000 !important; color: #000000 !important;"
+                        estilo_botao = "background: #bbf7d0 !important; border-color: #000000 !important; color: #000000 !important;"
                     elif "day-embarque" in classes:
-                        estilo_botao = "background: #fff1f2 !important; border-color: #000000 !important; color: #000000 !important;"
+                        estilo_botao = "background: #fecdd3 !important; border-color: #000000 !important; color: #000000 !important;"
                     else:
                         estilo_botao = "background: #ffffff !important; border-color: #000000 !important; color: #000000 !important;"
 
