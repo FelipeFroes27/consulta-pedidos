@@ -192,6 +192,7 @@ def icone_svg(tipo):
     imagens = {
         "recebimento": "receber.png",
         "embarque": "entrega-rapida.png",
+        "compromisso": "compromisso.png",
     }
     if tipo in imagens:
         caminho = Path(imagens[tipo])
@@ -1020,9 +1021,9 @@ with k1:
 with k2:
     render_kpi("Embarques hoje", numero(embarques_hoje["NF"].nunique()), "Notas fiscais previstas", "kpi-embarque", "embarque")
 with k3:
-    render_kpi("Recebimentos do mes", numero(recebimentos_mes["Pedido"].nunique()), "Pedidos no calendario", "kpi-mes", "caixa")
+    render_kpi("Recebimentos do mes", numero(recebimentos_mes["Pedido"].nunique()), "Pedidos no calendario", "kpi-mes", "compromisso")
 with k4:
-    render_kpi("Embarques do mes", numero(embarques_mes["NF"].nunique()), "Notas fiscais no calendario", "kpi-alerta", "caminhao")
+    render_kpi("Embarques do mes", numero(embarques_mes["NF"].nunique()), "Notas fiscais no calendario", "kpi-alerta", "compromisso")
 
 col_calendario, col_lateral = st.columns([3.35, 1], gap="medium")
 
