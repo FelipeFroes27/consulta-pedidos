@@ -633,7 +633,7 @@ st.markdown(
     .kpi-alerta {border-left: 8px solid #fecdd3;}
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        padding: 10px 12px;
+        padding: 8px 10px;
     }
 
     .calendar-head {
@@ -641,7 +641,7 @@ st.markdown(
         align-items: center;
         justify-content: space-between;
         gap: 10px;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
 
     .calendar-title {
@@ -649,13 +649,13 @@ st.markdown(
         font-size: 28px;
         font-weight: 900;
         text-align: center;
-        line-height: 46px;
+        line-height: 40px;
     }
 
     .weekday {
-        padding: 11px 4px;
+        padding: 9px 4px;
         border: 2px solid #000000;
-        border-radius: 7px;
+        border-radius: 4px;
         background: #000000;
         color: #ffffff;
         text-align: center;
@@ -665,7 +665,7 @@ st.markdown(
 
     .stButton > button {
         border: 3px solid #000000 !important;
-        border-radius: 8px !important;
+        border-radius: 4px !important;
         background: #ffffff !important;
         color: #000000 !important;
         box-shadow: none !important;
@@ -673,11 +673,11 @@ st.markdown(
     }
 
     .calendar-day .stButton > button {
-        min-height: 116px !important;
-        padding: 10px !important;
+        min-height: 92px !important;
+        padding: 8px !important;
         white-space: pre-line !important;
-        line-height: 1.35 !important;
-        font-size: 15px !important;
+        line-height: 1.25 !important;
+        font-size: 14px !important;
         text-align: left !important;
         align-items: flex-start !important;
         justify-content: flex-start !important;
@@ -828,11 +828,11 @@ st.markdown(
 
     .event-recebimento {
         background: #ffffff;
-        border-left: 8px solid #22c55e;
+        border-left: 8px solid #bbf7d0;
     }
     .event-embarque {
         background: #ffffff;
-        border-left: 8px solid #ef4444;
+        border-left: 8px solid #fecdd3;
     }
 
     .empty {
@@ -885,7 +885,7 @@ st.markdown(
         min-height: 54px;
         padding: 7px 9px;
         border: 2px solid #000000;
-        border-radius: 7px;
+        border-radius: 4px;
         background: #ffffff;
     }
 
@@ -909,7 +909,7 @@ st.markdown(
         border-collapse: collapse;
         border-spacing: 0;
         border: 2px solid #000000;
-        border-radius: 7px;
+        border-radius: 4px;
         overflow: hidden;
         margin: 6px 0 12px 0;
         table-layout: fixed;
@@ -1117,11 +1117,11 @@ with col_calendario:
                         f"""
                         <style>
                         .st-key-{chave_dia} button {{
-                            min-height: 126px !important;
-                            padding: 11px !important;
+                            min-height: 96px !important;
+                            padding: 8px !important;
                             white-space: pre-line !important;
-                            line-height: 1.35 !important;
-                            font-size: 18px !important;
+                            line-height: 1.25 !important;
+                            font-size: 15px !important;
                             font-weight: 800 !important;
                             {estilo_botao}
                         }}
