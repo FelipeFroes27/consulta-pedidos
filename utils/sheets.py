@@ -174,20 +174,20 @@ def _encontrar_coluna(df, nomes):
 
 def _colunas_deduplicacao_embarques(df):
     coluna_numero = _encontrar_coluna(df, ["Numero", "NF", "Nota Fiscal"])
-    coluna_codigo = _encontrar_coluna(df, ["Código", "Codigo", "Cdigo", "C?digo"])
-    coluna_descricao = _encontrar_coluna(df, ["Descrição", "Descricao", "Descrio", "Descri??o"])
-    coluna_quantidade = _encontrar_coluna(df, ["Quantidade", "Qtde", "Qtd"])
-    colunas = [coluna_numero, coluna_codigo, coluna_descricao, coluna_quantidade]
+    coluna_embarque = _encontrar_coluna(df, ["Numero do embarque", "Embarque"])
+    coluna_pedido_venda = _encontrar_coluna(df, ["Pedido de venda", "Pedido venda", "PV"])
+    coluna_codigo_nome = _encontrar_coluna(df, ["Código - nome", "Codigo - nome", "Codigo nome", "Código nome"])
+    colunas = [coluna_numero, coluna_embarque, coluna_pedido_venda, coluna_codigo_nome]
     return colunas if all(colunas) else None
 
 
 def _adicionar_chaves_deduplicacao(df, colunas):
-    coluna_numero, coluna_codigo, coluna_descricao, coluna_quantidade = colunas
+    coluna_numero, coluna_embarque, coluna_pedido_venda, coluna_codigo_nome = colunas
     df = df.copy()
     df["_dedup_numero"] = _texto_chave(df[coluna_numero])
-    df["_dedup_codigo"] = _texto_chave(df[coluna_codigo])
-    df["_dedup_descricao"] = _texto_chave(df[coluna_descricao])
-    df["_dedup_quantidade"] = pd.to_numeric(df[coluna_quantidade], errors="coerce").fillna(0).round(6)
+    df["_dedup_embarque"] = _texto_chave(df[coluna_embarque])
+    df["_dedup_pedido_venda"] = _texto_chave(df[coluna_pedido_venda])
+    df["_dedup_codigo_nome"] = _texto_chave(df[coluna_codigo_nome])
     return df
 
 
@@ -201,10 +201,10 @@ def _remover_duplicados_embarques(df):
     df = _adicionar_chaves_deduplicacao(df, colunas)
     df = (
         df.drop_duplicates(
-            subset=["_dedup_numero", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"],
+            subset=["_dedup_numero", "_dedup_embarque", "_dedup_pedido_venda", "_dedup_codigo_nome"],
             keep="first",
         )
-        .drop(columns=["_dedup_numero", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"])
+        .drop(columns=["_dedup_numero", "_dedup_embarque", "_dedup_pedido_venda", "_dedup_codigo_nome"])
         .copy()
     )
     st.session_state["embarques_duplicados_removidos"] = (
@@ -220,7 +220,7 @@ def _linhas_duplicadas_embarques(df):
 
     df_chaves = _adicionar_chaves_deduplicacao(df, colunas)
     duplicadas = df_chaves.duplicated(
-        subset=["_dedup_numero", "_dedup_codigo", "_dedup_descricao", "_dedup_quantidade"],
+        subset=["_dedup_numero", "_dedup_embarque", "_dedup_pedido_venda", "_dedup_codigo_nome"],
         keep="first",
     )
     return [indice + 2 for indice, duplicada in enumerate(duplicadas) if duplicada]

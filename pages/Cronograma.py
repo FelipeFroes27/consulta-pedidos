@@ -125,52 +125,41 @@ def preparar_embarques(df_original):
     coluna_embarque = encontrar_coluna(df, ["Numero do embarque", "Embarque"])
     coluna_nf = encontrar_coluna(df, ["Numero", "NF", "Nota Fiscal"])
     coluna_transportadora = encontrar_coluna(df, ["Nome do transportadora", "Transportadora"])
-    coluna_codigo = encontrar_coluna(df, ["Codigo", "Codigo Produto", "Cod"])
-    coluna_descricao = encontrar_coluna(df, ["Descricao", "Descrição", "Produto"])
-    coluna_qtde = encontrar_coluna(df, ["Quantidade", "Qtde", "Qtd"])
     coluna_placa = encontrar_coluna(df, ["Placa"])
+    coluna_endereco = encontrar_coluna(df, ["Endereco nota", "Endereço nota", "Endereco", "Endereço"])
+    coluna_pedido_venda = encontrar_coluna(df, ["Pedido de venda", "Pedido venda", "PV"])
+    coluna_codigo_nome = encontrar_coluna(df, ["Código - nome", "Codigo - nome", "Codigo nome", "Código nome"])
+
+    colunas_saida = [
+        "Data Agenda",
+        "Embarque",
+        "NF",
+        "Transportadora",
+        "Placa",
+        "Endereco",
+        "Pedido Venda",
+        "Codigo Nome",
+    ]
 
     obrigatorias = [coluna_data, coluna_embarque, coluna_nf]
     if df.empty or any(coluna is None for coluna in obrigatorias):
-        return pd.DataFrame(
-            columns=[
-                "Data Agenda",
-                "Embarque",
-                "NF",
-                "Transportadora",
-                "Placa",
-                "Codigo",
-                "Descricao",
-                "Quantidade",
-            ]
-        )
+        return pd.DataFrame(columns=colunas_saida)
 
     df["Data Agenda"] = pd.to_datetime(df[coluna_data], errors="coerce", dayfirst=True).dt.date
     df = df[df["Data Agenda"].notna()].copy()
 
     if df.empty:
-        return df
+        return pd.DataFrame(columns=colunas_saida)
 
     df["Embarque"] = texto_serie(df[coluna_embarque], "")
     df["NF"] = texto_serie(df[coluna_nf], "")
     df["Transportadora"] = texto_serie(df[coluna_transportadora]) if coluna_transportadora else "Nao informado"
     df["Placa"] = texto_serie(df[coluna_placa], "") if coluna_placa else ""
-    df["Codigo"] = texto_serie(df[coluna_codigo], "") if coluna_codigo else ""
-    df["Descricao"] = texto_serie(df[coluna_descricao], "") if coluna_descricao else ""
-    df["Quantidade"] = pd.to_numeric(df[coluna_qtde], errors="coerce").fillna(0) if coluna_qtde else 1
+    df["Endereco"] = texto_serie(df[coluna_endereco], "") if coluna_endereco else ""
+    df["Pedido Venda"] = texto_serie(df[coluna_pedido_venda], "") if coluna_pedido_venda else ""
+    df["Codigo Nome"] = texto_serie(df[coluna_codigo_nome], "") if coluna_codigo_nome else ""
 
-    return df[
-        [
-            "Data Agenda",
-            "Embarque",
-            "NF",
-            "Transportadora",
-            "Placa",
-            "Codigo",
-            "Descricao",
-            "Quantidade",
-        ]
-    ].copy()
+    return df[colunas_saida].copy()
 
 
 def classe_prazo(data):
@@ -413,7 +402,7 @@ def render_detalhe_recebimentos(df):
 
 def render_detalhe_embarques(df):
     notas = df["NF"].nunique()
-    volumes = int(df["Quantidade"].sum())
+    volumes = len(df)
     transportadoras = df["Transportadora"].nunique()
 
     st.markdown(
@@ -429,16 +418,22 @@ def render_detalhe_embarques(df):
 
     por_transportadora = (
         df.groupby("Transportadora")
-        .agg(Notas=("NF", "nunique"), Volumes=("Quantidade", "sum"))
+        .agg(Notas=("NF", "nunique"), Volumes=("Codigo Nome", "count"))
         .reset_index()
         .sort_values(["Notas", "Volumes"], ascending=False)
     )
     st.markdown("**Resumo por transportadora**")
     render_tabela_html(por_transportadora, ["Transportadora", "Notas", "Volumes"])
 
-    detalhes = df[["Embarque", "NF", "Transportadora", "Placa", "Codigo", "Descricao", "Quantidade"]].copy()
+    detalhes = df[["Pedido Venda", "NF", "Transportadora", "Placa", "Codigo Nome"]].copy()
+    detalhes = detalhes.rename(
+        columns={
+            "Pedido Venda": "Pedido de venda",
+            "Codigo Nome": "Código - nome",
+        }
+    )
     st.markdown("**Itens do dia**")
-    render_tabela_html(detalhes, ["Embarque", "NF", "Transportadora", "Placa", "Codigo", "Descricao", "Quantidade"])
+    render_tabela_html(detalhes, ["Pedido de venda", "NF", "Transportadora", "Placa", "Código - nome"])
 
 
 st.markdown(
@@ -1026,7 +1021,7 @@ with col_calendario:
         h1, h2, h3 = st.columns([.38, 2.4, .38])
 
         with h1:
-            if st.button("‹", use_container_width=True, disabled=st.session_state.agenda_mes_idx <= 0):
+            if st.button("<", use_container_width=True, disabled=st.session_state.agenda_mes_idx <= 0):
                 st.session_state.agenda_mes_idx -= 1
                 st.rerun()
 
@@ -1034,7 +1029,7 @@ with col_calendario:
             st.markdown(f'<div class="calendar-title">{escape(mes_formatado(mes_selecionado))}</div>', unsafe_allow_html=True)
 
         with h3:
-            if st.button("›", use_container_width=True, disabled=st.session_state.agenda_mes_idx >= len(meses) - 1):
+            if st.button(">", use_container_width=True, disabled=st.session_state.agenda_mes_idx >= len(meses) - 1):
                 st.session_state.agenda_mes_idx += 1
                 st.rerun()
 
@@ -1071,9 +1066,9 @@ with col_calendario:
                 if not fora_mes:
                     indicadores = []
                     if tem_recebimento:
-                        indicadores.append(f"● Receb. {recebimentos_dia['Pedido'].nunique()}")
+                        indicadores.append(f"Receb. {recebimentos_dia['Pedido'].nunique()}")
                     if tem_embarque:
-                        indicadores.append(f"■ Embarq. {embarques_dia['NF'].nunique()}")
+                        indicadores.append(f"Embarq. {embarques_dia['NF'].nunique()}")
                     if indicadores:
                         texto_botao += "\n" + "\n".join(indicadores)
 
