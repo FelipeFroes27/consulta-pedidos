@@ -11,14 +11,14 @@ from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
 from utils.sheets import carregar_dados, carregar_embarques
 
 
-st.set_page_config(page_title="Agenda Logistica", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Agenda Logística", layout="wide", initial_sidebar_state="expanded")
 ativar_modo_exibicao("agenda")
 
 
 MESES_PT = {
     1: "Janeiro",
     2: "Fevereiro",
-    3: "Marco",
+    3: "Março",
     4: "Abril",
     5: "Maio",
     6: "Junho",
@@ -48,7 +48,7 @@ def encontrar_coluna(df, opcoes):
     return None
 
 
-def texto_serie(serie, padrao="Nao informado"):
+def texto_serie(serie, padrao="Não informado"):
     return serie.fillna("").astype(str).str.strip().replace("", padrao)
 
 
@@ -100,8 +100,8 @@ def preparar_recebimentos(df_original):
         return df
 
     df["Pedido"] = texto_serie(df[coluna_pedido], "")
-    df["Fornecedor"] = texto_serie(df[coluna_fornecedor]) if coluna_fornecedor else "Nao informado"
-    df["Grupo"] = texto_serie(df[coluna_grupo]) if coluna_grupo else "Nao informado"
+    df["Fornecedor"] = texto_serie(df[coluna_fornecedor]) if coluna_fornecedor else "Não informado"
+    df["Grupo"] = texto_serie(df[coluna_grupo]) if coluna_grupo else "Não informado"
     df["Codigo"] = texto_serie(df[coluna_codigo], "") if coluna_codigo else ""
     df["Descricao"] = texto_serie(df[coluna_descricao], "") if coluna_descricao else ""
     df["Quantidade"] = pd.to_numeric(df[coluna_qtde], errors="coerce").fillna(0) if coluna_qtde else 1
@@ -153,7 +153,7 @@ def preparar_embarques(df_original):
 
     df["Embarque"] = texto_serie(df[coluna_embarque], "")
     df["NF"] = texto_serie(df[coluna_nf], "")
-    df["Transportadora"] = texto_serie(df[coluna_transportadora]) if coluna_transportadora else "Nao informado"
+    df["Transportadora"] = texto_serie(df[coluna_transportadora]) if coluna_transportadora else "Não informado"
     df["Placa"] = texto_serie(df[coluna_placa], "") if coluna_placa else ""
     df["Endereco"] = texto_serie(df[coluna_endereco], "") if coluna_endereco else ""
     df["Pedido Venda"] = texto_serie(df[coluna_pedido_venda], "") if coluna_pedido_venda else ""
@@ -184,7 +184,7 @@ def label_prazo(data):
     if dias == 0:
         return "Hoje"
     if dias == 1:
-        return "Amanha"
+        return "Amanhã"
     return f"Em {dias} dias"
 
 
@@ -277,7 +277,7 @@ def render_proximos(recebimentos, embarques):
     eventos = pd.concat([proximos_recebimentos, proximos_embarques], ignore_index=True)
 
     st.markdown(
-        '<div class="events-head"><div class="section-title">Proximos eventos</div><button type="button">Ver todos</button></div>',
+        '<div class="events-head"><div class="section-title">Próximos eventos</div><button type="button">Ver todos</button></div>',
         unsafe_allow_html=True,
     )
 
@@ -345,7 +345,7 @@ def abrir_detalhe_dia(data, recebimentos, embarques):
     )
 
     if recebimentos_dia.empty and embarques_dia.empty:
-        st.info("Nao ha recebimentos ou embarques cadastrados para este dia.")
+        st.info("Não há recebimentos ou embarques cadastrados para este dia.")
         return
 
     abas = []
@@ -393,8 +393,14 @@ def render_detalhe_recebimentos(df):
     render_tabela_html(por_fornecedor, ["Fornecedor", "Pedidos", "Itens"])
 
     detalhes = df[["Pedido", "Fornecedor", "Grupo", "Codigo", "Descricao", "Quantidade"]].copy()
+    detalhes = detalhes.rename(
+        columns={
+            "Codigo": "Código",
+            "Descricao": "Descrição",
+        }
+    )
     st.markdown("**Itens do dia**")
-    render_tabela_html(detalhes, ["Pedido", "Fornecedor", "Grupo", "Codigo", "Descricao", "Quantidade"])
+    render_tabela_html(detalhes, ["Pedido", "Fornecedor", "Grupo", "Código", "Descrição", "Quantidade"])
 
 
 def render_detalhe_embarques(df):
@@ -621,10 +627,10 @@ st.markdown(
         font-size: 12px;
     }
 
-    .kpi-recebimento {border-left: 8px solid #22c55e;}
-    .kpi-embarque {border-left: 8px solid #ef4444;}
-    .kpi-mes {border-left: 8px solid #22c55e;}
-    .kpi-alerta {border-left: 8px solid #ef4444;}
+    .kpi-recebimento {border-left: 8px solid #bbf7d0;}
+    .kpi-embarque {border-left: 8px solid #fecdd3;}
+    .kpi-mes {border-left: 8px solid #bbf7d0;}
+    .kpi-alerta {border-left: 8px solid #fecdd3;}
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
         padding: 10px 12px;
@@ -963,8 +969,8 @@ st.markdown(
     f"""
     <div class="page-head">
         <div class="page-title">
-            <h1>Agenda Logistica</h1>
-            <p>Calendario mensal com recebimentos e embarques programados.</p>
+            <h1>Agenda Logística</h1>
+            <p>Calendário mensal com recebimentos e embarques programados.</p>
         </div>
         <div class="page-logos">
             <img src="data:image/bmp;base64,{logo_branco}" alt="Trendx">
@@ -980,14 +986,14 @@ try:
     recebimentos = preparar_recebimentos(carregar_dados())
 except Exception as exc:
     recebimentos = preparar_recebimentos(pd.DataFrame())
-    st.warning("Nao foi possivel carregar a aba Pedidos.")
+    st.warning("Não foi possível carregar a aba Pedidos.")
     st.caption(str(exc))
 
 try:
     embarques = preparar_embarques(carregar_embarques())
 except Exception as exc:
     embarques = preparar_embarques(pd.DataFrame())
-    st.warning("Nao foi possivel carregar a aba Embarques.")
+    st.warning("Não foi possível carregar a aba Embarques.")
     st.caption(str(exc))
 
 hoje = pd.Timestamp.today().normalize().date()
@@ -1021,9 +1027,9 @@ with k1:
 with k2:
     render_kpi("Embarques hoje", numero(embarques_hoje["NF"].nunique()), "Notas fiscais previstas", "kpi-embarque", "embarque")
 with k3:
-    render_kpi("Recebimentos do mes", numero(recebimentos_mes["Pedido"].nunique()), "Pedidos no calendario", "kpi-mes", "compromisso")
+    render_kpi("Recebimentos do mês", numero(recebimentos_mes["Pedido"].nunique()), "Pedidos no calendário", "kpi-mes", "compromisso")
 with k4:
-    render_kpi("Embarques do mes", numero(embarques_mes["NF"].nunique()), "Notas fiscais no calendario", "kpi-alerta", "compromisso")
+    render_kpi("Embarques do mês", numero(embarques_mes["NF"].nunique()), "Notas fiscais no calendário", "kpi-alerta", "compromisso")
 
 col_calendario, col_lateral = st.columns([3.35, 1], gap="medium")
 
