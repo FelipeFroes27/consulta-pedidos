@@ -30,7 +30,7 @@ MESES_PT = {
     12: "Dezembro",
 }
 
-DIAS_SEMANA = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"]
+DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 
 
 def normalizar_coluna(nome):
@@ -937,11 +937,18 @@ st.markdown(
 
     .detail-table-wrap {
         width: 100%;
+        max-height: 260px;
+        overflow: auto;
         border: 2px solid #000000;
         border-radius: 4px;
-        overflow: hidden;
         margin: 6px 0 12px 0;
         background: #ffffff;
+    }
+
+    .detail-table-wrap thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
     }
 
     .detail-table {
