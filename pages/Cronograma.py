@@ -627,10 +627,10 @@ st.markdown(
         font-size: 12px;
     }
 
-    .kpi-recebimento {border-left: 8px solid #bbf7d0;}
-    .kpi-embarque {border-left: 8px solid #fecdd3;}
-    .kpi-mes {border-left: 8px solid #bbf7d0;}
-    .kpi-alerta {border-left: 8px solid #fecdd3;}
+    .kpi-recebimento {border-left: 8px solid #86efac;}
+    .kpi-embarque {border-left: 8px solid #fda4af;}
+    .kpi-mes {border-left: 8px solid #86efac;}
+    .kpi-alerta {border-left: 8px solid #fda4af;}
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
         padding: 8px 10px;
@@ -655,7 +655,7 @@ st.markdown(
     .weekday {
         padding: 9px 4px;
         border: 2px solid #000000;
-        border-radius: 4px;
+        border-radius: 0;
         background: #000000;
         color: #ffffff;
         text-align: center;
@@ -665,7 +665,7 @@ st.markdown(
 
     .stButton > button {
         border: 3px solid #000000 !important;
-        border-radius: 4px !important;
+        border-radius: 0 !important;
         background: #ffffff !important;
         color: #000000 !important;
         box-shadow: none !important;
@@ -690,17 +690,17 @@ st.markdown(
     }
 
     .day-recebimento .stButton > button {
-        background: #bbf7d0 !important;
+        background: #86efac !important;
         border-color: #000000 !important;
     }
 
     .day-embarque .stButton > button {
-        background: #fecdd3 !important;
+        background: #fda4af !important;
         border-color: #000000 !important;
     }
 
     .day-misto .stButton > button {
-        background: linear-gradient(135deg, #bbf7d0 0 50%, #fecdd3 50% 100%) !important;
+        background: linear-gradient(135deg, #86efac 0 50%, #fda4af 50% 100%) !important;
         border-color: #000000 !important;
     }
 
@@ -734,9 +734,9 @@ st.markdown(
         display: inline-block;
     }
 
-    .legend-recebimento::before {background: #bbf7d0;}
-    .legend-embarque::before {background: #fecdd3;}
-    .legend-misto::before {background: linear-gradient(135deg, #bbf7d0 0 49%, #fecdd3 50% 100%);}
+    .legend-recebimento::before {background: #86efac;}
+    .legend-embarque::before {background: #fda4af;}
+    .legend-misto::before {background: linear-gradient(135deg, #86efac 0 49%, #fda4af 50% 100%);}
 
     .section-title {
         margin: 0 0 12px 0;
@@ -772,7 +772,7 @@ st.markdown(
         margin-bottom: 8px;
         padding: 9px 10px;
         border: 3px solid #000000;
-        border-radius: 7px;
+        border-radius: 4px;
         background: #ffffff;
     }
 
@@ -828,11 +828,11 @@ st.markdown(
 
     .event-recebimento {
         background: #ffffff;
-        border-left: 8px solid #bbf7d0;
+        border-left: 8px solid #86efac;
     }
     .event-embarque {
         background: #ffffff;
-        border-left: 8px solid #fecdd3;
+        border-left: 8px solid #fda4af;
     }
 
     .empty {
@@ -1050,14 +1050,14 @@ with col_calendario:
                 st.session_state.agenda_mes_idx += 1
                 st.rerun()
 
-        semana_header = st.columns(7)
+        semana_header = st.columns(7, gap=None)
         for indice, dia in enumerate(DIAS_SEMANA):
             with semana_header[indice]:
                 st.markdown(f'<div class="weekday">{dia}</div>', unsafe_allow_html=True)
 
         calendario = calendar.Calendar(firstweekday=0)
         for semana in calendario.monthdatescalendar(mes_selecionado.year, mes_selecionado.month):
-            cols = st.columns(7)
+            cols = st.columns(7, gap=None)
             for indice, data in enumerate(semana):
                 recebimentos_dia, embarques_dia = resumo_data(recebimentos, embarques, data)
                 tem_recebimento = not recebimentos_dia.empty
@@ -1102,11 +1102,11 @@ with col_calendario:
                 with cols[indice]:
                     chave_dia = f"cal_{data.strftime('%Y_%m_%d')}"
                     if "day-misto" in classes:
-                        estilo_botao = "background: linear-gradient(135deg, #bbf7d0 0 50%, #fecdd3 50% 100%) !important; border-color: #000000 !important; color: #000000 !important;"
+                        estilo_botao = "background: linear-gradient(135deg, #86efac 0 50%, #fda4af 50% 100%) !important; border-color: #000000 !important; color: #000000 !important;"
                     elif "day-recebimento" in classes:
-                        estilo_botao = "background: #bbf7d0 !important; border-color: #000000 !important; color: #000000 !important;"
+                        estilo_botao = "background: #86efac !important; border-color: #000000 !important; color: #000000 !important;"
                     elif "day-embarque" in classes:
-                        estilo_botao = "background: #fecdd3 !important; border-color: #000000 !important; color: #000000 !important;"
+                        estilo_botao = "background: #fda4af !important; border-color: #000000 !important; color: #000000 !important;"
                     else:
                         estilo_botao = "background: #ffffff !important; border-color: #000000 !important; color: #000000 !important;"
 
@@ -1117,12 +1117,14 @@ with col_calendario:
                         f"""
                         <style>
                         .st-key-{chave_dia} button {{
-                            min-height: 96px !important;
+                            min-height: 88px !important;
                             padding: 8px !important;
                             white-space: pre-line !important;
                             line-height: 1.25 !important;
                             font-size: 15px !important;
                             font-weight: 800 !important;
+                            border-radius: 0 !important;
+                            margin: -1px 0 0 -1px !important;
                             {estilo_botao}
                         }}
                         </style>
