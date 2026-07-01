@@ -121,9 +121,21 @@ label,
 }
 
 .page-logos img {
-    max-height: 30px;
-    max-width: 104px;
+    max-height: 36px;
+    max-width: 158px;
     object-fit: contain;
+}
+
+.page-logos .goper-mark {
+    max-height: 36px;
+    max-width: 36px;
+}
+
+.logo-divider {
+    width: 3px;
+    height: 34px;
+    background: #000000;
+    display: inline-block;
 }
 
 .page-head {
@@ -179,7 +191,7 @@ with st.sidebar:
 # ==================================================
 
 logo_branco = base64.b64encode(Path("Logo Branco.bmp").read_bytes()).decode("utf-8")
-logo_preto = base64.b64encode(Path("logo preto goper.png").read_bytes()).decode("utf-8")
+logo_goper = base64.b64encode(Path("logo preto goper.png").read_bytes()).decode("utf-8")
 
 st.markdown(
     f"""
@@ -189,7 +201,8 @@ st.markdown(
         </div>
         <div class="page-logos">
             <img src="data:image/bmp;base64,{logo_branco}" alt="Trendx">
-            <img src="data:image/png;base64,{logo_preto}" alt="Goper">
+            <span class="logo-divider"></span>
+            <img class="goper-mark" src="data:image/png;base64,{logo_goper}" alt="Goper">
         </div>
     </div>
     """,
