@@ -199,13 +199,16 @@ def label_prazo(data):
     return f"Em {dias} dias"
 
 
-def render_kpi(titulo, valor, nota, classe):
+def render_kpi(titulo, valor, nota, classe, icone):
     st.markdown(
         f"""
         <div class="kpi-card {classe}">
-            <div class="kpi-label">{escape(titulo)}</div>
-            <div class="kpi-value">{escape(str(valor))}</div>
-            <div class="kpi-note">{escape(nota)}</div>
+            <div class="kpi-icon">{escape(icone)}</div>
+            <div>
+                <div class="kpi-label">{escape(titulo)}</div>
+                <div class="kpi-value">{escape(str(valor))}</div>
+                <div class="kpi-note">{escape(nota)}</div>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -262,9 +265,11 @@ def render_proximos(recebimentos, embarques):
     for _, linha in eventos.iterrows():
         tipo = "Recebimento" if linha["Tipo"] == "recebimento" else "Embarque"
         classe = "event-recebimento" if linha["Tipo"] == "recebimento" else "event-embarque"
+        icone = "R" if linha["Tipo"] == "recebimento" else "E"
         st.markdown(
             f"""
             <div class="mini-event {classe}">
+                <div class="mini-event-icon">{escape(icone)}</div>
                 <div>
                     <strong>{escape(tipo)}</strong>
                     <span>{escape(label_prazo(linha["Data Agenda"]))} - {formatar_data(linha["Data Agenda"])}</span>
@@ -408,10 +413,23 @@ st.markdown(
         color: #000000 !important;
     }
 
+    [data-testid="stSidebar"] a {
+        border: 2px solid #000000;
+        border-radius: 10px;
+        margin: 6px 10px;
+        padding: 8px 10px;
+        background: #ffffff;
+        font-weight: 850;
+    }
+
+    [data-testid="stSidebar"] a:hover {
+        background: #f2f4f7;
+    }
+
     .block-container,
     [data-testid="stMainBlockContainer"] {
-        max-width: 1540px;
-        padding-top: .25rem;
+        max-width: 1660px;
+        padding-top: .35rem;
         padding-bottom: 1.25rem;
     }
 
@@ -419,7 +437,7 @@ st.markdown(
         display: flex;
         justify-content: center;
         gap: 8px;
-        padding: 8px 0 18px 0;
+        padding: 10px 0 20px 0;
     }
 
     .sidebar-logo img {
@@ -435,20 +453,21 @@ st.markdown(
         align-items: flex-start;
         justify-content: space-between;
         gap: 20px;
-        margin-bottom: .75rem;
+        margin-bottom: .9rem;
+        padding: 2px 0 4px 0;
     }
 
     .page-title h1 {
         margin: 0;
         color: #000000;
-        font-size: 30px;
+        font-size: 32px;
         line-height: 1.05;
         font-weight: 900;
         letter-spacing: 0;
     }
 
     .page-title p {
-        margin: 6px 0 0 0;
+        margin: 8px 0 0 0;
         color: #333333;
         font-size: 14px;
     }
@@ -460,8 +479,8 @@ st.markdown(
     }
 
     .page-logos img {
-        max-height: 30px;
-        max-width: 104px;
+        max-height: 34px;
+        max-width: 128px;
         object-fit: contain;
     }
 
@@ -475,31 +494,49 @@ st.markdown(
     }
 
     .kpi-card {
-        min-height: 74px;
-        padding: 12px 14px;
+        min-height: 70px;
+        padding: 10px 12px;
         position: relative;
         overflow: hidden;
+        display: grid;
+        grid-template-columns: 38px 1fr;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .kpi-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border: 2px solid #000000;
+        border-radius: 10px;
+        background: #ffffff;
+        color: #000000;
+        font-size: 13px;
+        font-weight: 950;
     }
 
     .kpi-label {
         color: #333333;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 850;
         text-transform: uppercase;
     }
 
     .kpi-value {
-        margin-top: 6px;
+        margin-top: 4px;
         color: #000000;
-        font-size: 24px;
+        font-size: 22px;
         line-height: 1;
         font-weight: 900;
     }
 
     .kpi-note {
-        margin-top: 5px;
+        margin-top: 4px;
         color: #475467;
-        font-size: 11px;
+        font-size: 10px;
     }
 
     .kpi-recebimento {border-left: 8px solid #22c55e;}
@@ -508,7 +545,7 @@ st.markdown(
     .kpi-alerta {border-left: 8px solid #f59e0b;}
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        padding: 14px 16px 16px 16px;
+        padding: 16px;
     }
 
     .calendar-head {
@@ -521,14 +558,14 @@ st.markdown(
 
     .calendar-title {
         color: #000000;
-        font-size: 28px;
+        font-size: 30px;
         font-weight: 900;
         text-align: center;
-        line-height: 42px;
+        line-height: 44px;
     }
 
     .weekday {
-        padding: 10px 4px;
+        padding: 11px 4px;
         border: 2px solid #000000;
         border-radius: 10px;
         background: #000000;
@@ -548,11 +585,14 @@ st.markdown(
     }
 
     .calendar-day .stButton > button {
-        min-height: 118px !important;
-        padding: 10px !important;
+        min-height: 126px !important;
+        padding: 11px !important;
         white-space: pre-line !important;
         line-height: 1.35 !important;
         font-size: 15px !important;
+        text-align: left !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
     }
 
     .day-empty .stButton > button {
@@ -611,22 +651,36 @@ st.markdown(
     .legend-misto::before {background: linear-gradient(135deg, #22c55e 0 49%, #ef4444 50% 100%);}
 
     .section-title {
-        margin-bottom: 10px;
+        margin-bottom: 14px;
         color: #000000;
-        font-size: 16px;
+        font-size: 20px;
         font-weight: 900;
     }
 
     .mini-event {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 48px;
+        grid-template-columns: 36px minmax(0, 1fr) 36px;
         align-items: center;
-        gap: 10px;
-        margin-bottom: 9px;
-        padding: 10px;
+        gap: 11px;
+        margin-bottom: 12px;
+        padding: 12px;
         border: 2px solid #000000;
-        border-radius: 12px;
+        border-radius: 14px;
         background: #ffffff;
+    }
+
+    .mini-event-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border: 2px solid #000000;
+        border-radius: 10px;
+        background: #ffffff;
+        color: #000000;
+        font-size: 13px;
+        font-weight: 950;
     }
 
     .mini-event strong {
@@ -652,8 +706,14 @@ st.markdown(
         text-align: right;
     }
 
-    .event-recebimento {background: #ecfdf5;}
-    .event-embarque {background: #fff1f2;}
+    .event-recebimento {
+        background: #ecfdf5;
+        border-left: 8px solid #22c55e;
+    }
+    .event-embarque {
+        background: #fff1f2;
+        border-left: 8px solid #ef4444;
+    }
 
     .empty {
         min-height: 90px;
@@ -708,7 +768,6 @@ with st.sidebar:
     st.page_link("pages/Cronograma.py", label="Agenda")
 
 logo_branco = base64.b64encode(Path("Logo Branco.bmp").read_bytes()).decode("utf-8")
-logo_preto = base64.b64encode(Path("logo preto goper.png").read_bytes()).decode("utf-8")
 
 st.markdown(
     f"""
@@ -719,7 +778,6 @@ st.markdown(
         </div>
         <div class="page-logos">
             <img src="data:image/bmp;base64,{logo_branco}" alt="Trendx">
-            <img src="data:image/png;base64,{logo_preto}" alt="Goper">
         </div>
     </div>
     """,
@@ -767,13 +825,13 @@ recebimentos_hoje, embarques_hoje = resumo_data(recebimentos, embarques, hoje)
 
 k1, k2, k3, k4 = st.columns(4)
 with k1:
-    render_kpi("Recebimentos hoje", numero(recebimentos_hoje["Pedido"].nunique()), "Pedidos previstos", "kpi-recebimento")
+    render_kpi("Recebimentos hoje", numero(recebimentos_hoje["Pedido"].nunique()), "Pedidos previstos", "kpi-recebimento", "R")
 with k2:
-    render_kpi("Embarques hoje", numero(embarques_hoje["NF"].nunique()), "Notas fiscais previstas", "kpi-embarque")
+    render_kpi("Embarques hoje", numero(embarques_hoje["NF"].nunique()), "Notas fiscais previstas", "kpi-embarque", "E")
 with k3:
-    render_kpi("Recebimentos do mes", numero(recebimentos_mes["Pedido"].nunique()), "Pedidos no calendario", "kpi-mes")
+    render_kpi("Recebimentos do mes", numero(recebimentos_mes["Pedido"].nunique()), "Pedidos no calendario", "kpi-mes", "M")
 with k4:
-    render_kpi("Embarques do mes", numero(embarques_mes["NF"].nunique()), "Notas fiscais no calendario", "kpi-alerta")
+    render_kpi("Embarques do mes", numero(embarques_mes["NF"].nunique()), "Notas fiscais no calendario", "kpi-alerta", "N")
 
 col_calendario, col_lateral = st.columns([3.35, 1], gap="medium")
 
@@ -827,9 +885,9 @@ with col_calendario:
                 if not fora_mes:
                     indicadores = []
                     if tem_recebimento:
-                        indicadores.append(f"R {recebimentos_dia['Pedido'].nunique()}")
+                        indicadores.append(f"● Receb. {recebimentos_dia['Pedido'].nunique()}")
                     if tem_embarque:
-                        indicadores.append(f"E {embarques_dia['NF'].nunique()}")
+                        indicadores.append(f"■ Embarq. {embarques_dia['NF'].nunique()}")
                     if indicadores:
                         texto_botao += "\n" + "\n".join(indicadores)
 
@@ -851,8 +909,8 @@ with col_calendario:
                         f"""
                         <style>
                         .st-key-{chave_dia} button {{
-                            min-height: 118px !important;
-                            padding: 10px !important;
+                            min-height: 126px !important;
+                            padding: 11px !important;
                             white-space: pre-line !important;
                             line-height: 1.35 !important;
                             font-size: 15px !important;
