@@ -653,6 +653,9 @@ st.markdown(
     }
 
     .weekday {
+        width: calc(100% - 0.3cm);
+        box-sizing: border-box;
+        margin: 0 0.3cm 0.3cm 0;
         padding: 9px 4px;
         border: 2px solid #000000;
         border-radius: 0;
@@ -673,6 +676,9 @@ st.markdown(
     }
 
     .calendar-day .stButton > button {
+        width: calc(100% - 0.3cm) !important;
+        box-sizing: border-box !important;
+        margin: 0 0.3cm 0.3cm 0 !important;
         min-height: 116px !important;
         padding: 8px !important;
         white-space: pre-line !important;
@@ -1124,7 +1130,9 @@ with col_calendario:
                             font-size: 15px !important;
                             font-weight: 800 !important;
                             border-radius: 0 !important;
-                            margin: -1px 0 0 -1px !important;
+                            width: calc(100% - 0.3cm) !important;
+                            box-sizing: border-box !important;
+                            margin: 0 0.3cm 0.3cm 0 !important;
                             {estilo_botao}
                         }}
                         </style>
