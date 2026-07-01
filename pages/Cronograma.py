@@ -56,6 +56,12 @@ def numero(valor):
     return f"{int(valor):,}".replace(",", ".")
 
 
+def total_itens(df):
+    if df.empty or "Quantidade" not in df.columns:
+        return 0
+    return int(pd.to_numeric(df["Quantidade"], errors="coerce").fillna(0).sum())
+
+
 def formatar_data(data):
     if hasattr(data, "strftime"):
         return data.strftime("%d/%m/%Y")
@@ -257,7 +263,7 @@ def proximos_eventos(df, tipo, limite=4):
     if tipo == "recebimento":
         resumo = (
             df_futuro.groupby("Data Agenda")
-            .agg(Titulo=("Fornecedor", lambda s: s.value_counts().index[0]), Qtd=("Pedido", "nunique"))
+            .agg(Titulo=("Fornecedor", lambda s: s.value_counts().index[0]), Qtd=("Quantidade", "sum"))
             .reset_index()
         )
     else:
@@ -290,7 +296,7 @@ def render_proximos(recebimentos, embarques):
         tipo = "Recebimento" if linha["Tipo"] == "recebimento" else "Embarque"
         classe = "event-recebimento" if linha["Tipo"] == "recebimento" else "event-embarque"
         icone = "recebimento" if linha["Tipo"] == "recebimento" else "embarque"
-        unidade = "pedido" if linha["Tipo"] == "recebimento" and int(linha["Qtd"]) == 1 else "pedidos"
+        unidade = "item" if linha["Tipo"] == "recebimento" and int(linha["Qtd"]) == 1 else "itens"
         if linha["Tipo"] == "embarque":
             unidade = "nota" if int(linha["Qtd"]) == 1 else "notas"
         st.markdown(
@@ -321,10 +327,12 @@ def render_tabela_html(df, colunas):
 
     st.markdown(
         f"""
-        <table class="detail-table">
-            <thead><tr>{cabecalho}</tr></thead>
-            <tbody>{"".join(linhas)}</tbody>
-        </table>
+        <div class="detail-table-wrap">
+            <table class="detail-table">
+                <thead><tr>{cabecalho}</tr></thead>
+                <tbody>{"".join(linhas)}</tbody>
+            </table>
+        </div>
         """,
         unsafe_allow_html=True,
     )
@@ -873,11 +881,21 @@ st.markdown(
         font-weight: 750;
     }
 
+    div[data-testid="stDialog"] {
+        position: fixed !important;
+        inset: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 2rem !important;
+    }
+
     div[data-testid="stDialog"] > div {
         width: min(1120px, calc(100vw - 5rem)) !important;
         max-width: min(1120px, calc(100vw - 5rem)) !important;
         min-height: auto !important;
         max-height: 86vh !important;
+        margin: 0 auto !important;
         border: 3px solid #000000 !important;
         border-radius: 8px !important;
         background: #ffffff !important;
@@ -917,14 +935,21 @@ st.markdown(
         font-weight: 900;
     }
 
-    .detail-table {
+    .detail-table-wrap {
         width: 100%;
-        border-collapse: collapse;
-        border-spacing: 0;
         border: 2px solid #000000;
         border-radius: 4px;
         overflow: hidden;
         margin: 6px 0 12px 0;
+        background: #ffffff;
+    }
+
+    .detail-table {
+        width: 100%;
+        border-collapse: collapse;
+        border-spacing: 0;
+        border: 0;
+        margin: 0;
         table-layout: fixed;
     }
 
@@ -1036,11 +1061,11 @@ recebimentos_hoje, embarques_hoje = resumo_data(recebimentos, embarques, hoje)
 
 k1, k2, k3, k4 = st.columns(4)
 with k1:
-    render_kpi("Recebimentos hoje", numero(recebimentos_hoje["Pedido"].nunique()), "Pedidos previstos", "kpi-recebimento", "recebimento")
+    render_kpi("Recebimentos hoje", numero(total_itens(recebimentos_hoje)), "Itens previstos", "kpi-recebimento", "recebimento")
 with k2:
     render_kpi("Embarques hoje", numero(embarques_hoje["NF"].nunique()), "Notas fiscais previstas", "kpi-embarque", "embarque")
 with k3:
-    render_kpi("Recebimentos do mês", numero(recebimentos_mes["Pedido"].nunique()), "Pedidos no calendário", "kpi-mes", "compromisso")
+    render_kpi("Recebimentos do mês", numero(total_itens(recebimentos_mes)), "Itens no calendário", "kpi-mes", "compromisso")
 with k4:
     render_kpi("Embarques do mês", numero(embarques_mes["NF"].nunique()), "Notas fiscais no calendário", "kpi-alerta", "compromisso")
 
@@ -1096,7 +1121,7 @@ with col_calendario:
                 if not fora_mes:
                     marcadores_dia = []
                     if tem_recebimento:
-                        marcadores_dia.append(f"R {recebimentos_dia['Pedido'].nunique()}")
+                        marcadores_dia.append(f"R {total_itens(recebimentos_dia)}")
                     if tem_embarque:
                         marcadores_dia.append(f"E {embarques_dia['NF'].nunique()}")
                     if marcadores_dia:
