@@ -323,6 +323,27 @@ def render_proximos(recebimentos, embarques):
         )
 
 
+def render_tabela_html(df, colunas):
+    cabecalho = "".join(f"<th>{escape(str(coluna))}</th>" for coluna in colunas)
+    linhas = []
+    for _, linha in df[colunas].head(80).iterrows():
+        celulas = "".join(f"<td>{escape(str(linha.get(coluna, '')))}</td>" for coluna in colunas)
+        linhas.append(f"<tr>{celulas}</tr>")
+
+    if not linhas:
+        linhas.append(f'<tr><td colspan="{len(colunas)}">Sem registros.</td></tr>')
+
+    st.markdown(
+        f"""
+        <table class="detail-table">
+            <thead><tr>{cabecalho}</tr></thead>
+            <tbody>{"".join(linhas)}</tbody>
+        </table>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 @st.dialog("Detalhes do dia", width="large")
 def abrir_detalhe_dia(data, recebimentos, embarques):
     recebimentos_dia, embarques_dia = resumo_data(recebimentos, embarques, data)
@@ -365,13 +386,16 @@ def render_detalhe_recebimentos(df):
     itens = int(df["Quantidade"].sum())
     fornecedores = df["Fornecedor"].nunique()
 
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("Pedidos", numero(pedidos))
-    with c2:
-        st.metric("Itens", numero(itens))
-    with c3:
-        st.metric("Fornecedores", numero(fornecedores))
+    st.markdown(
+        f"""
+        <div class="detail-metrics">
+            <div class="detail-metric"><span>Pedidos</span><strong>{numero(pedidos)}</strong></div>
+            <div class="detail-metric"><span>Itens</span><strong>{numero(itens)}</strong></div>
+            <div class="detail-metric"><span>Fornecedores</span><strong>{numero(fornecedores)}</strong></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     por_fornecedor = (
         df.groupby("Fornecedor")
@@ -380,11 +404,11 @@ def render_detalhe_recebimentos(df):
         .sort_values(["Pedidos", "Itens"], ascending=False)
     )
     st.markdown("**Resumo por fornecedor**")
-    st.dataframe(por_fornecedor, use_container_width=True, hide_index=True, height=180)
+    render_tabela_html(por_fornecedor, ["Fornecedor", "Pedidos", "Itens"])
 
     detalhes = df[["Pedido", "Fornecedor", "Grupo", "Codigo", "Descricao", "Quantidade"]].copy()
     st.markdown("**Itens do dia**")
-    st.dataframe(detalhes, use_container_width=True, hide_index=True, height=320)
+    render_tabela_html(detalhes, ["Pedido", "Fornecedor", "Grupo", "Codigo", "Descricao", "Quantidade"])
 
 
 def render_detalhe_embarques(df):
@@ -392,13 +416,16 @@ def render_detalhe_embarques(df):
     volumes = int(df["Quantidade"].sum())
     transportadoras = df["Transportadora"].nunique()
 
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("Notas fiscais", numero(notas))
-    with c2:
-        st.metric("Volumes", numero(volumes))
-    with c3:
-        st.metric("Transportadoras", numero(transportadoras))
+    st.markdown(
+        f"""
+        <div class="detail-metrics">
+            <div class="detail-metric"><span>Notas fiscais</span><strong>{numero(notas)}</strong></div>
+            <div class="detail-metric"><span>Volumes</span><strong>{numero(volumes)}</strong></div>
+            <div class="detail-metric"><span>Transportadoras</span><strong>{numero(transportadoras)}</strong></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     por_transportadora = (
         df.groupby("Transportadora")
@@ -407,11 +434,11 @@ def render_detalhe_embarques(df):
         .sort_values(["Notas", "Volumes"], ascending=False)
     )
     st.markdown("**Resumo por transportadora**")
-    st.dataframe(por_transportadora, use_container_width=True, hide_index=True, height=180)
+    render_tabela_html(por_transportadora, ["Transportadora", "Notas", "Volumes"])
 
     detalhes = df[["Embarque", "NF", "Transportadora", "Placa", "Codigo", "Descricao", "Quantidade"]].copy()
     st.markdown("**Itens do dia**")
-    st.dataframe(detalhes, use_container_width=True, hide_index=True, height=320)
+    render_tabela_html(detalhes, ["Embarque", "NF", "Transportadora", "Placa", "Codigo", "Descricao", "Quantidade"])
 
 
 st.markdown(
@@ -452,19 +479,6 @@ st.markdown(
     [data-testid="stSidebar"] span,
     label {
         color: #000000 !important;
-    }
-
-    [data-testid="stSidebar"] a {
-        border: 2px solid #000000;
-        border-radius: 10px;
-        margin: 6px 10px;
-        padding: 8px 10px;
-        background: #ffffff;
-        font-weight: 850;
-    }
-
-    [data-testid="stSidebar"] a:hover {
-        background: #f2f4f7;
     }
 
     .block-container,
@@ -542,12 +556,6 @@ st.markdown(
         height: 34px;
         background: #000000;
         display: inline-block;
-    }
-
-    .goper-word {
-        font-size: 26px;
-        font-weight: 900;
-        line-height: 1;
     }
 
     .kpi-card,
@@ -678,16 +686,16 @@ st.markdown(
 
     .day-recebimento .stButton > button {
         background: #ffffff !important;
-        border-color: #000000 !important;
+        border-color: #2f8f4f !important;
     }
 
     .day-embarque .stButton > button {
         background: #ffffff !important;
-        border-color: #000000 !important;
+        border-color: #ef4444 !important;
     }
 
     .day-misto .stButton > button {
-        background: linear-gradient(135deg, #ecfdf5 0 49%, #fff1f2 50% 100%) !important;
+        background: #ffffff !important;
         border-color: #000000 !important;
     }
 
@@ -836,7 +844,7 @@ st.markdown(
     .dialog-head h2 {
         margin: 0;
         color: #000000;
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 900;
     }
 
@@ -845,6 +853,74 @@ st.markdown(
         color: #475467;
         font-size: 13px;
         font-weight: 750;
+    }
+
+    div[data-testid="stDialog"] > div {
+        border: 3px solid #000000 !important;
+        border-radius: 8px !important;
+        background: #ffffff !important;
+    }
+
+    .detail-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin: 8px 0 12px 0;
+    }
+
+    .detail-metric {
+        min-height: 60px;
+        padding: 8px 10px;
+        border: 2px solid #000000;
+        border-radius: 7px;
+        background: #ffffff;
+    }
+
+    .detail-metric span {
+        display: block;
+        color: #344054;
+        font-size: 12px;
+        font-weight: 850;
+    }
+
+    .detail-metric strong {
+        display: block;
+        margin-top: 4px;
+        color: #000000;
+        font-size: 18px;
+        font-weight: 900;
+    }
+
+    .detail-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 2px solid #000000;
+        border-radius: 7px;
+        overflow: hidden;
+        margin: 8px 0 16px 0;
+        table-layout: fixed;
+    }
+
+    .detail-table th {
+        background: #000000;
+        color: #ffffff;
+        padding: 7px 8px;
+        font-size: 12px;
+        font-weight: 900;
+        text-align: left;
+        border-right: 1px solid #333333;
+    }
+
+    .detail-table td {
+        min-height: 30px;
+        padding: 7px 8px;
+        color: #000000;
+        background: #ffffff;
+        border-top: 1px solid #d0d5dd;
+        border-right: 1px solid #d0d5dd;
+        font-size: 12px;
+        overflow-wrap: anywhere;
     }
 
     @media (max-width: 900px) {
@@ -862,14 +938,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-if "menu_lateral_aberto" not in st.session_state:
-    st.session_state.menu_lateral_aberto = False
-
 render_menu_lateral()
 
 with st.sidebar:
     st.markdown('<div class="sidebar-logo">', unsafe_allow_html=True)
     st.image("Logo Branco.bmp", width=72)
+    st.image("logo preto goper.png", width=32)
     st.markdown("</div>", unsafe_allow_html=True)
     st.page_link("app.py", label="Inicio")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
@@ -890,7 +964,6 @@ st.markdown(
             <img src="data:image/bmp;base64,{logo_branco}" alt="Trendx">
             <span class="logo-divider"></span>
             <img class="goper-mark" src="data:image/png;base64,{logo_goper}" alt="Goper">
-            <span class="goper-word">GOPER</span>
         </div>
     </div>
     """,
@@ -1017,15 +1090,13 @@ with col_calendario:
                 with cols[indice]:
                     chave_dia = f"cal_{data.strftime('%Y_%m_%d')}"
                     if "day-misto" in classes:
-                        estilo_botao = "background: linear-gradient(135deg, #ecfdf5 0 49%, #fff1f2 50% 100%) !important; border-color: #000000 !important; color: #000000 !important;"
+                        estilo_botao = "background: #ffffff !important; border-color: #000000 !important; color: #000000 !important;"
                     elif "day-recebimento" in classes:
-                        estilo_botao = "background: #ecfdf5 !important; border-color: #16a34a !important; color: #000000 !important;"
+                        estilo_botao = "background: #ffffff !important; border-color: #2f8f4f !important; color: #000000 !important;"
                     elif "day-embarque" in classes:
-                        estilo_botao = "background: #fff1f2 !important; border-color: #dc2626 !important; color: #000000 !important;"
+                        estilo_botao = "background: #ffffff !important; border-color: #ef4444 !important; color: #000000 !important;"
                     else:
-                        estilo_botao = "background: #ffffff !important; border-color: #d0d5dd !important; color: #98a2b3 !important;"
-
-                    estilo_botao = "background: #ffffff !important; border-color: #000000 !important; color: #000000 !important;"
+                        estilo_botao = "background: #ffffff !important; border-color: #000000 !important; color: #000000 !important;"
 
                     if data == hoje:
                         estilo_botao += " outline: 3px solid #2563eb !important; outline-offset: 1px !important;"
