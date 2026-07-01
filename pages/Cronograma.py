@@ -680,17 +680,17 @@ st.markdown(
     }
 
     .day-recebimento .stButton > button {
-        background: #ffffff !important;
-        border-color: #2f8f4f !important;
+        background: #ecfdf5 !important;
+        border-color: #000000 !important;
     }
 
     .day-embarque .stButton > button {
-        background: #ffffff !important;
-        border-color: #ef4444 !important;
+        background: #fff1f2 !important;
+        border-color: #000000 !important;
     }
 
     .day-misto .stButton > button {
-        background: #ffffff !important;
+        background: linear-gradient(135deg, #ecfdf5 0 50%, #fff1f2 50% 100%) !important;
         border-color: #000000 !important;
     }
 
@@ -851,21 +851,29 @@ st.markdown(
     }
 
     div[data-testid="stDialog"] > div {
+        width: min(1120px, calc(100vw - 5rem)) !important;
+        max-width: min(1120px, calc(100vw - 5rem)) !important;
+        min-height: auto !important;
+        max-height: 86vh !important;
         border: 3px solid #000000 !important;
         border-radius: 8px !important;
         background: #ffffff !important;
     }
 
+    div[data-testid="stDialog"] [data-testid="stVerticalBlock"] {
+        gap: .55rem !important;
+    }
+
     .detail-metrics {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-        margin: 8px 0 12px 0;
+        gap: 8px;
+        margin: 6px 0 10px 0;
     }
 
     .detail-metric {
-        min-height: 60px;
-        padding: 8px 10px;
+        min-height: 54px;
+        padding: 7px 9px;
         border: 2px solid #000000;
         border-radius: 7px;
         background: #ffffff;
@@ -888,12 +896,12 @@ st.markdown(
 
     .detail-table {
         width: 100%;
-        border-collapse: separate;
+        border-collapse: collapse;
         border-spacing: 0;
         border: 2px solid #000000;
         border-radius: 7px;
         overflow: hidden;
-        margin: 8px 0 16px 0;
+        margin: 6px 0 12px 0;
         table-layout: fixed;
     }
 
@@ -904,16 +912,15 @@ st.markdown(
         font-size: 12px;
         font-weight: 900;
         text-align: left;
-        border-right: 1px solid #333333;
+        border: 1px solid #000000;
     }
 
     .detail-table td {
         min-height: 30px;
-        padding: 7px 8px;
+        padding: 6px 8px;
         color: #000000;
         background: #ffffff;
-        border-top: 1px solid #d0d5dd;
-        border-right: 1px solid #d0d5dd;
+        border: 1px solid #98a2b3;
         font-size: 12px;
         overflow-wrap: anywhere;
     }
@@ -1085,11 +1092,11 @@ with col_calendario:
                 with cols[indice]:
                     chave_dia = f"cal_{data.strftime('%Y_%m_%d')}"
                     if "day-misto" in classes:
-                        estilo_botao = "background: #ffffff !important; border-color: #000000 !important; color: #000000 !important;"
+                        estilo_botao = "background: linear-gradient(135deg, #ecfdf5 0 50%, #fff1f2 50% 100%) !important; border-color: #000000 !important; color: #000000 !important;"
                     elif "day-recebimento" in classes:
-                        estilo_botao = "background: #ffffff !important; border-color: #2f8f4f !important; color: #000000 !important;"
+                        estilo_botao = "background: #ecfdf5 !important; border-color: #000000 !important; color: #000000 !important;"
                     elif "day-embarque" in classes:
-                        estilo_botao = "background: #ffffff !important; border-color: #ef4444 !important; color: #000000 !important;"
+                        estilo_botao = "background: #fff1f2 !important; border-color: #000000 !important; color: #000000 !important;"
                     else:
                         estilo_botao = "background: #ffffff !important; border-color: #000000 !important; color: #000000 !important;"
 
