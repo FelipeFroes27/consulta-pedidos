@@ -330,6 +330,58 @@ def render_tabela_html(df, colunas):
     )
 
 
+def render_calendario_html(recebimentos, embarques, periodo, hoje):
+    calendario = calendar.Calendar(firstweekday=0)
+    partes = ['<div class="calendar-grid">']
+
+    for dia in DIAS_SEMANA:
+        partes.append(f'<div class="weekday">{escape(dia)}</div>')
+
+    for semana in calendario.monthdatescalendar(periodo.year, periodo.month):
+        for data in semana:
+            recebimentos_dia, embarques_dia = resumo_data(recebimentos, embarques, data)
+            tem_recebimento = not recebimentos_dia.empty
+            tem_embarque = not embarques_dia.empty
+            fora_mes = data.month != periodo.month
+
+            classes = ["calendar-cell"]
+            if fora_mes:
+                classes.append("day-empty")
+            elif tem_recebimento and tem_embarque:
+                classes.append("day-misto")
+            elif tem_recebimento:
+                classes.append("day-recebimento")
+            elif tem_embarque:
+                classes.append("day-embarque")
+            else:
+                classes.append("day-empty")
+
+            if data == hoje:
+                classes.append("day-today")
+
+            marcadores_dia = []
+            if not fora_mes:
+                if tem_recebimento:
+                    marcadores_dia.append(f"R {recebimentos_dia['Pedido'].nunique()}")
+                if tem_embarque:
+                    marcadores_dia.append(f"E {embarques_dia['NF'].nunique()}")
+
+            conteudo = f'<span class="calendar-cell-day">{data.day}</span>'
+            if marcadores_dia:
+                conteudo += f'<span class="calendar-cell-markers">{escape("  ".join(marcadores_dia))}</span>'
+
+            classe_html = " ".join(classes)
+            if fora_mes:
+                partes.append(f'<div class="{classe_html}">{conteudo}</div>')
+            else:
+                partes.append(
+                    f'<a class="{classe_html}" href="?agenda_dia={data.isoformat()}">{conteudo}</a>'
+                )
+
+    partes.append("</div>")
+    st.markdown("".join(partes), unsafe_allow_html=True)
+
+
 @st.dialog("Detalhes do dia", width="large")
 def abrir_detalhe_dia(data, recebimentos, embarques):
     recebimentos_dia, embarques_dia = resumo_data(recebimentos, embarques, data)
@@ -662,9 +714,7 @@ st.markdown(
     }
 
     .weekday {
-        width: calc(100% - 0.3cm);
         box-sizing: border-box;
-        margin: 0 0.3cm 0.3cm 0;
         padding: 9px 4px;
         border: 2px solid #000000;
         border-radius: 0;
@@ -673,6 +723,64 @@ st.markdown(
         text-align: center;
         font-size: 13px;
         font-weight: 900;
+    }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.3cm;
+    }
+
+    .calendar-cell {
+        min-height: 126px;
+        padding: 8px;
+        border: 3px solid #000000;
+        border-radius: 0;
+        background: #ffffff;
+        color: #000000;
+        text-decoration: none;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        font-size: 15px;
+        font-weight: 800;
+    }
+
+    .calendar-cell:hover {
+        color: #000000;
+        text-decoration: none;
+        filter: brightness(.98);
+    }
+
+    .calendar-cell-day,
+    .calendar-cell-markers {
+        display: block;
+        color: inherit;
+    }
+
+    .calendar-cell.day-empty {
+        background: #ffffff;
+        color: #000000;
+    }
+
+    .calendar-cell.day-recebimento {
+        background: #86efac;
+    }
+
+    .calendar-cell.day-embarque {
+        background: #fda4af;
+    }
+
+    .calendar-cell.day-misto {
+        background: linear-gradient(135deg, #86efac 0 50%, #fda4af 50% 100%);
+    }
+
+    .calendar-cell.day-today {
+        outline: 3px solid #2563eb;
+        outline-offset: -3px;
     }
 
     .stButton > button {
@@ -1065,98 +1173,7 @@ with col_calendario:
                 st.session_state.agenda_mes_idx += 1
                 st.rerun()
 
-        semana_header = st.columns(7, gap=None)
-        for indice, dia in enumerate(DIAS_SEMANA):
-            with semana_header[indice]:
-                st.markdown(f'<div class="weekday">{dia}</div>', unsafe_allow_html=True)
-
-        calendario = calendar.Calendar(firstweekday=0)
-        for semana in calendario.monthdatescalendar(mes_selecionado.year, mes_selecionado.month):
-            cols = st.columns(7, gap=None)
-            for indice, data in enumerate(semana):
-                recebimentos_dia, embarques_dia = resumo_data(recebimentos, embarques, data)
-                tem_recebimento = not recebimentos_dia.empty
-                tem_embarque = not embarques_dia.empty
-                fora_mes = data.month != mes_selecionado.month
-
-                classes = ["calendar-day"]
-                if fora_mes:
-                    classes.append("day-empty")
-                elif tem_recebimento and tem_embarque:
-                    classes.append("day-misto")
-                elif tem_recebimento:
-                    classes.append("day-recebimento")
-                elif tem_embarque:
-                    classes.append("day-embarque")
-                else:
-                    classes.append("day-empty")
-
-                if data == hoje:
-                    classes.append("day-today")
-
-                texto_botao = f"{data.day}"
-                if not fora_mes:
-                    indicadores = []
-                    if tem_recebimento:
-                        indicadores.append(f"Receb. {recebimentos_dia['Pedido'].nunique()}")
-                    if tem_embarque:
-                        indicadores.append(f"Embarq. {embarques_dia['NF'].nunique()}")
-                    if indicadores:
-                        texto_botao += "\n" + "\n".join(indicadores)
-
-                texto_botao = f"{data.day}"
-                if not fora_mes:
-                    marcadores_dia = []
-                    if tem_recebimento:
-                        marcadores_dia.append(f"R {recebimentos_dia['Pedido'].nunique()}")
-                    if tem_embarque:
-                        marcadores_dia.append(f"E {embarques_dia['NF'].nunique()}")
-                    if marcadores_dia:
-                        texto_botao += "\n\n" + "    ".join(marcadores_dia)
-
-                with cols[indice]:
-                    chave_dia = f"cal_{data.strftime('%Y_%m_%d')}"
-                    if "day-misto" in classes:
-                        estilo_botao = "background: linear-gradient(135deg, #86efac 0 50%, #fda4af 50% 100%) !important; border-color: #000000 !important; color: #000000 !important;"
-                    elif "day-recebimento" in classes:
-                        estilo_botao = "background: #86efac !important; border-color: #000000 !important; color: #000000 !important;"
-                    elif "day-embarque" in classes:
-                        estilo_botao = "background: #fda4af !important; border-color: #000000 !important; color: #000000 !important;"
-                    else:
-                        estilo_botao = "background: #ffffff !important; border-color: #000000 !important; color: #000000 !important;"
-
-                    if data == hoje:
-                        estilo_botao += " outline: 3px solid #2563eb !important; outline-offset: 1px !important;"
-
-                    st.markdown(
-                        f"""
-                        <style>
-                        .st-key-{chave_dia} button {{
-                            min-height: 126px !important;
-                            padding: 8px !important;
-                            white-space: pre-line !important;
-                            line-height: 1.25 !important;
-                            font-size: 15px !important;
-                            font-weight: 800 !important;
-                            border-radius: 0 !important;
-                            width: calc(100% - 0.3cm) !important;
-                            box-sizing: border-box !important;
-                            margin: 0 0.3cm 0.3cm 0 !important;
-                            {estilo_botao}
-                        }}
-                        </style>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                    clicou = st.button(
-                        texto_botao,
-                        key=chave_dia,
-                        use_container_width=True,
-                        disabled=fora_mes,
-                    )
-
-                    if clicou:
-                        abrir_detalhe_dia(data, recebimentos, embarques)
+        render_calendario_html(recebimentos, embarques, mes_selecionado, hoje)
 
         st.markdown(
             """
@@ -1172,3 +1189,12 @@ with col_calendario:
 with col_lateral:
     with st.container(border=True):
         render_proximos(recebimentos, embarques)
+
+dia_parametro = st.query_params.get("agenda_dia")
+if isinstance(dia_parametro, list):
+    dia_parametro = dia_parametro[0] if dia_parametro else None
+
+if dia_parametro:
+    dia_convertido = pd.to_datetime(dia_parametro, errors="coerce")
+    if pd.notna(dia_convertido):
+        abrir_detalhe_dia(dia_convertido.date(), recebimentos, embarques)
