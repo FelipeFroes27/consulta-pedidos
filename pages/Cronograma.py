@@ -203,7 +203,7 @@ def render_kpi(titulo, valor, nota, classe, icone):
     st.markdown(
         f"""
         <div class="kpi-card {classe}">
-            <div class="kpi-icon">{escape(icone)}</div>
+            <div class="kpi-icon"><span>{escape(icone)}</span></div>
             <div>
                 <div class="kpi-label">{escape(titulo)}</div>
                 <div class="kpi-value">{escape(str(valor))}</div>
@@ -269,7 +269,7 @@ def render_proximos(recebimentos, embarques):
         st.markdown(
             f"""
             <div class="mini-event {classe}">
-                <div class="mini-event-icon">{escape(icone)}</div>
+                <div class="mini-event-icon"><span>{escape(icone)}</span></div>
                 <div>
                     <strong>{escape(tipo)}</strong>
                     <span>{escape(label_prazo(linha["Data Agenda"]))} - {formatar_data(linha["Data Agenda"])}</span>
@@ -428,8 +428,8 @@ st.markdown(
 
     .block-container,
     [data-testid="stMainBlockContainer"] {
-        max-width: 1660px;
-        padding-top: .35rem;
+        max-width: 1680px;
+        padding-top: 1.7rem;
         padding-bottom: 1.25rem;
     }
 
@@ -453,21 +453,21 @@ st.markdown(
         align-items: flex-start;
         justify-content: space-between;
         gap: 20px;
-        margin-bottom: .9rem;
-        padding: 2px 0 4px 0;
+        margin: 0 0 1.05rem 0;
+        padding: 8px 0 2px 0;
     }
 
     .page-title h1 {
         margin: 0;
         color: #000000;
-        font-size: 32px;
+        font-size: 34px;
         line-height: 1.05;
         font-weight: 900;
         letter-spacing: 0;
     }
 
     .page-title p {
-        margin: 8px 0 0 0;
+        margin: 18px 0 0 0;
         color: #333333;
         font-size: 14px;
     }
@@ -475,13 +475,19 @@ st.markdown(
     .page-logos {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 18px;
+        padding-top: 2px;
     }
 
     .page-logos img {
-        max-height: 34px;
+        max-height: 30px;
         max-width: 128px;
         object-fit: contain;
+    }
+
+    .page-logos .goper-mark {
+        max-height: 34px;
+        max-width: 34px;
     }
 
     .kpi-card,
@@ -494,33 +500,38 @@ st.markdown(
     }
 
     .kpi-card {
-        min-height: 70px;
-        padding: 10px 12px;
+        min-height: 88px;
+        padding: 13px 18px;
         position: relative;
         overflow: hidden;
         display: grid;
-        grid-template-columns: 38px 1fr;
+        grid-template-columns: 40px 1fr;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
     }
 
     .kpi-icon {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 34px;
-        height: 34px;
+        width: 36px;
+        height: 36px;
         border: 2px solid #000000;
         border-radius: 10px;
-        background: #ffffff;
-        color: #000000;
+        background: #000000;
+        color: #ffffff;
         font-size: 13px;
         font-weight: 950;
     }
 
+    .kpi-icon span {
+        display: block;
+        line-height: 1;
+    }
+
     .kpi-label {
         color: #333333;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 850;
         text-transform: uppercase;
     }
@@ -528,15 +539,15 @@ st.markdown(
     .kpi-value {
         margin-top: 4px;
         color: #000000;
-        font-size: 22px;
+        font-size: 28px;
         line-height: 1;
         font-weight: 900;
     }
 
     .kpi-note {
-        margin-top: 4px;
+        margin-top: 9px;
         color: #475467;
-        font-size: 10px;
+        font-size: 12px;
     }
 
     .kpi-recebimento {border-left: 8px solid #22c55e;}
@@ -545,7 +556,7 @@ st.markdown(
     .kpi-alerta {border-left: 8px solid #f59e0b;}
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        padding: 16px;
+        padding: 16px 18px;
     }
 
     .calendar-head {
@@ -561,11 +572,11 @@ st.markdown(
         font-size: 30px;
         font-weight: 900;
         text-align: center;
-        line-height: 44px;
+        line-height: 40px;
     }
 
     .weekday {
-        padding: 11px 4px;
+        padding: 13px 4px;
         border: 2px solid #000000;
         border-radius: 10px;
         background: #000000;
@@ -585,7 +596,7 @@ st.markdown(
     }
 
     .calendar-day .stButton > button {
-        min-height: 126px !important;
+        min-height: 134px !important;
         padding: 11px !important;
         white-space: pre-line !important;
         line-height: 1.35 !important;
@@ -651,7 +662,7 @@ st.markdown(
     .legend-misto::before {background: linear-gradient(135deg, #22c55e 0 49%, #ef4444 50% 100%);}
 
     .section-title {
-        margin-bottom: 14px;
+        margin-bottom: 18px;
         color: #000000;
         font-size: 20px;
         font-weight: 900;
@@ -663,7 +674,7 @@ st.markdown(
         align-items: center;
         gap: 11px;
         margin-bottom: 12px;
-        padding: 12px;
+        padding: 15px 13px;
         border: 2px solid #000000;
         border-radius: 14px;
         background: #ffffff;
@@ -677,8 +688,8 @@ st.markdown(
         height: 34px;
         border: 2px solid #000000;
         border-radius: 10px;
-        background: #ffffff;
-        color: #000000;
+        background: #000000;
+        color: #ffffff;
         font-size: 13px;
         font-weight: 950;
     }
@@ -757,10 +768,108 @@ st.markdown(
 
 render_menu_lateral()
 
+menu_aberto = st.session_state.get("menu_lateral_aberto", True)
+layout_main_css = (
+    """
+    [data-testid="stAppViewContainer"] > .main {
+        margin-left: 18rem !important;
+        width: calc(100vw - 18rem) !important;
+    }
+
+    .block-container,
+    [data-testid="stMainBlockContainer"] {
+        max-width: calc(100vw - 20.5rem) !important;
+        margin-left: 18rem !important;
+        margin-right: 0 !important;
+        padding-left: 1.25rem !important;
+        padding-right: 1.25rem !important;
+        padding-top: 1.7rem !important;
+    }
+    """
+    if menu_aberto
+    else """
+    [data-testid="stAppViewContainer"] > .main {
+        margin-left: 0 !important;
+        width: 100vw !important;
+    }
+
+    .block-container,
+    [data-testid="stMainBlockContainer"] {
+        max-width: calc(100vw - 2.5rem) !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        padding-left: 1.25rem !important;
+        padding-right: 1.25rem !important;
+        padding-top: 1.7rem !important;
+    }
+    """
+)
+
+st.markdown(
+    "<style>\n"
+    + layout_main_css
+    + """
+
+    [data-testid="stSidebar"] {
+        background: #070707 !important;
+        border-right: 2px solid #000000 !important;
+    }
+
+    [data-testid="stSidebar"] > div,
+    [data-testid="stSidebar"] [data-testid="stSidebarUserContent"],
+    [data-testid="stSidebarContent"] {
+        background: #070707 !important;
+    }
+
+    [data-testid="stSidebar"] a {
+        margin: 8px 14px !important;
+        padding: 12px 14px !important;
+        border: 2px solid #ffffff !important;
+        border-radius: 12px !important;
+        background: #070707 !important;
+        color: #ffffff !important;
+        font-weight: 900 !important;
+    }
+
+    [data-testid="stSidebar"] a:hover {
+        background: #ffffff !important;
+        color: #000000 !important;
+    }
+
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] label {
+        color: #ffffff !important;
+    }
+
+    .sidebar-logo {
+        justify-content: flex-start;
+        padding: 26px 18px 22px 18px;
+    }
+
+    .sidebar-logo img {
+        background: transparent !important;
+        max-height: 34px;
+    }
+
+    .st-key-menu_lateral_toggle button {
+        background: #000000 !important;
+        color: #ffffff !important;
+        border: 2px solid #000000 !important;
+    }
+
+    .st-key-menu_lateral_toggle button:hover {
+        background: #ffffff !important;
+        color: #000000 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 with st.sidebar:
     st.markdown('<div class="sidebar-logo">', unsafe_allow_html=True)
     st.image("Logo Branco.bmp", width=72)
-    st.image("logo preto goper.png", width=32)
     st.markdown("</div>", unsafe_allow_html=True)
     st.page_link("app.py", label="Inicio")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
@@ -768,6 +877,7 @@ with st.sidebar:
     st.page_link("pages/Cronograma.py", label="Agenda")
 
 logo_branco = base64.b64encode(Path("Logo Branco.bmp").read_bytes()).decode("utf-8")
+logo_goper = base64.b64encode(Path("logo preto goper.png").read_bytes()).decode("utf-8")
 
 st.markdown(
     f"""
@@ -778,6 +888,7 @@ st.markdown(
         </div>
         <div class="page-logos">
             <img src="data:image/bmp;base64,{logo_branco}" alt="Trendx">
+            <img class="goper-mark" src="data:image/png;base64,{logo_goper}" alt="Goper">
         </div>
     </div>
     """,
