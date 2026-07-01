@@ -636,6 +636,15 @@ st.markdown(
         padding: 8px 10px;
     }
 
+    div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlock"] {
+        gap: 0 !important;
+    }
+
+    div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
+        gap: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
     .calendar-head {
         display: flex;
         align-items: center;
