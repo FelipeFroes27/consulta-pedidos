@@ -1027,6 +1027,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+_, coluna_atualizar = st.columns([6, 1])
+with coluna_atualizar:
+    if st.button("Atualizar dados", use_container_width=True):
+        carregar_dados.clear()
+        carregar_embarques.clear()
+        st.rerun()
+
 try:
     recebimentos = preparar_recebimentos(carregar_dados())
 except Exception as exc:
