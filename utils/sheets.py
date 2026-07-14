@@ -120,18 +120,6 @@ def registrar_recebimento(numero_pedido, pedido):
     headers = aba.row_values(1)
     linha = []
 
-    if isinstance(pedido, pd.DataFrame):
-        base_pedido = pedido
-        primeira_linha = pedido.iloc[0] if not pedido.empty else pd.Series(dtype="object")
-    else:
-        primeira_linha = pedido
-        base_pedido = pedido.to_frame().T
-
-    coluna_data_entrega = _encontrar_coluna(base_pedido, ["Data Entrega", "Data de entrega", "Entrega"])
-    data_entrega = str(primeira_linha.get(coluna_data_entrega, "")).strip() if coluna_data_entrega else ""
-    data_entrega_dt = pd.to_datetime(data_entrega, dayfirst=True, errors="coerce")
-    if pd.notna(data_entrega_dt):
-        data_entrega = data_entrega_dt.strftime("%d/%m/%Y")
     data_recebimento = datetime.now().strftime("%d/%m/%Y")
 
     for header in headers:
@@ -139,7 +127,7 @@ def registrar_recebimento(numero_pedido, pedido):
         if header_normalizado in ["pedido", "numero do pedido"]:
             linha.append(numero_pedido)
         elif header_normalizado == "data de entrega (sistema)":
-            linha.append(data_entrega)
+            linha.append(data_recebimento)
         elif header_normalizado == "data de recebimento":
             linha.append(data_recebimento)
         else:

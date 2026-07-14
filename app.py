@@ -194,7 +194,6 @@ with st.sidebar:
     st.markdown("</div>", unsafe_allow_html=True)
     st.page_link("app.py", label="Início")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
-    st.page_link("pages/Confirmar_Recebimento.py", label="Confirmar Recebimento")
     st.page_link("pages/Cronograma.py", label="Agenda")
 
 logo_branco = base64.b64encode(Path("Logo Branco.bmp").read_bytes()).decode("utf-8")
@@ -222,12 +221,8 @@ st.markdown(
                 <span>Filtros e detalhe dos pedidos importados do Sheets.</span>
             </div>
             <div class="home-section">
-                Aba Confirmar Recebimento
-                <span>Consulta o pedido e registra a data de recebimento no Histórico.</span>
-            </div>
-            <div class="home-section">
                 Aba Agenda
-                <span>Calendário mensal com recebimentos e embarques, com detalhe ao clicar no dia.</span>
+                <span>Calendário mensal com recebimentos, embarques e confirmação ao clicar no dia.</span>
             </div>
         </div>
     </div>

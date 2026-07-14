@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
-from utils.sheets import carregar_dados, carregar_embarques
+from utils.sheets import carregar_dados, carregar_embarques, recebimento_ja_registrado, registrar_recebimento
 
 
 st.set_page_config(page_title="Agenda Logística", layout="wide", initial_sidebar_state="expanded")
@@ -409,6 +409,40 @@ def render_detalhe_recebimentos(df):
     )
     st.markdown("**Itens do dia**")
     render_tabela_html(detalhes, ["Pedido", "Fornecedor", "Grupo", "Código", "Descrição", "Quantidade"])
+    pedidos_dia = [str(pedido).strip() for pedido in df["Pedido"].dropna().unique() if str(pedido).strip()]
+    pedidos_pendentes = [pedido for pedido in pedidos_dia if not recebimento_ja_registrado(pedido)]
+
+    st.markdown("**Confirmação de recebimento**")
+    if not pedidos_dia:
+        st.info("Nenhum pedido encontrado para confirmar.")
+    elif not pedidos_pendentes:
+        st.markdown(
+            '<div class="status-box">Todos os recebimentos deste dia já foram registrados.</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        texto_botao = "Confirmar recebimento do dia" if len(pedidos_pendentes) == 1 else "Confirmar recebimentos do dia"
+        chave_data = pd.to_datetime(df["Data Agenda"].iloc[0], errors="coerce")
+        chave_data = chave_data.strftime("%Y%m%d") if pd.notna(chave_data) else "sem_data"
+        if st.button(texto_botao, key=f"confirmar_recebimentos_{chave_data}", use_container_width=True):
+            erros = []
+            confirmados = 0
+            for pedido in pedidos_pendentes:
+                itens_pedido = df[df["Pedido"].astype(str).str.strip() == pedido].copy()
+                try:
+                    registrar_recebimento(pedido, itens_pedido)
+                except Exception as exc:
+                    erros.append(f"Pedido {pedido}: {exc}")
+                else:
+                    confirmados += 1
+
+            if confirmados:
+                st.success(f"{confirmados} recebimento(s) registrado(s) no Histórico.")
+            if erros:
+                for erro in erros:
+                    st.error(erro)
+            if confirmados and not erros:
+                st.rerun()
 
 
 def render_detalhe_embarques(df):
@@ -935,6 +969,17 @@ st.markdown(
         font-weight: 900;
     }
 
+    .status-box {
+        margin: 8px 0 12px 0;
+        padding: 10px 12px;
+        border: 2px solid #000000;
+        border-radius: 4px;
+        background: #f3f4f6;
+        color: #000000;
+        font-size: 13px;
+        font-weight: 850;
+    }
+
     .detail-table-wrap {
         width: 100%;
         max-height: 260px;
@@ -1004,7 +1049,6 @@ with st.sidebar:
     st.markdown("</div>", unsafe_allow_html=True)
     st.page_link("app.py", label="Inicio")
     st.page_link("pages/Consulta_Pedidos.py", label="Consulta de Pedidos")
-    st.page_link("pages/Confirmar_Recebimento.py", label="Confirmar Recebimento")
     st.page_link("pages/Cronograma.py", label="Agenda")
 
 logo_branco = base64.b64encode(Path("Logo Branco.bmp").read_bytes()).decode("utf-8")
