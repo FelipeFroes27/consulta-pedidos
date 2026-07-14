@@ -930,10 +930,29 @@ st.markdown(
         max-width: min(1120px, calc(100vw - 5rem)) !important;
         min-height: auto !important;
         max-height: 86vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
         margin: 0 auto !important;
         border: 3px solid #000000 !important;
         border-radius: 8px !important;
         background: #ffffff !important;
+    }
+
+    div[data-testid="stDialog"] > div::-webkit-scrollbar,
+    .detail-table-wrap::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    div[data-testid="stDialog"] > div::-webkit-scrollbar-thumb,
+    .detail-table-wrap::-webkit-scrollbar-thumb {
+        background: #000000;
+        border-radius: 0;
+    }
+
+    div[data-testid="stDialog"] > div::-webkit-scrollbar-track,
+    .detail-table-wrap::-webkit-scrollbar-track {
+        background: #ffffff;
     }
 
     div[data-testid="stDialog"] [data-testid="stVerticalBlock"] {
