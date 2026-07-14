@@ -391,24 +391,6 @@ def render_detalhe_recebimentos(df):
         unsafe_allow_html=True,
     )
 
-    por_fornecedor = (
-        df.groupby("Fornecedor")
-        .agg(Pedidos=("Pedido", "nunique"), Itens=("Quantidade", "sum"))
-        .reset_index()
-        .sort_values(["Pedidos", "Itens"], ascending=False)
-    )
-    st.markdown("**Resumo por fornecedor**")
-    render_tabela_html(por_fornecedor, ["Fornecedor", "Pedidos", "Itens"])
-
-    detalhes = df[["Pedido", "Fornecedor", "Grupo", "Codigo", "Descricao", "Quantidade"]].copy()
-    detalhes = detalhes.rename(
-        columns={
-            "Codigo": "Código",
-            "Descricao": "Descrição",
-        }
-    )
-    st.markdown("**Itens do dia**")
-    render_tabela_html(detalhes, ["Pedido", "Fornecedor", "Grupo", "Código", "Descrição", "Quantidade"])
     pedidos_dia = [str(pedido).strip() for pedido in df["Pedido"].dropna().unique() if str(pedido).strip()]
     pedidos_pendentes = [pedido for pedido in pedidos_dia if not recebimento_ja_registrado(pedido)]
 
@@ -443,6 +425,25 @@ def render_detalhe_recebimentos(df):
                     st.error(erro)
             if confirmados and not erros:
                 st.rerun()
+
+    por_fornecedor = (
+        df.groupby("Fornecedor")
+        .agg(Pedidos=("Pedido", "nunique"), Itens=("Quantidade", "sum"))
+        .reset_index()
+        .sort_values(["Pedidos", "Itens"], ascending=False)
+    )
+    st.markdown("**Resumo por fornecedor**")
+    render_tabela_html(por_fornecedor, ["Fornecedor", "Pedidos", "Itens"])
+
+    detalhes = df[["Pedido", "Fornecedor", "Grupo", "Codigo", "Descricao", "Quantidade"]].copy()
+    detalhes = detalhes.rename(
+        columns={
+            "Codigo": "Código",
+            "Descricao": "Descrição",
+        }
+    )
+    st.markdown("**Itens do dia**")
+    render_tabela_html(detalhes, ["Pedido", "Fornecedor", "Grupo", "Código", "Descrição", "Quantidade"])
 
 
 def render_detalhe_embarques(df):
