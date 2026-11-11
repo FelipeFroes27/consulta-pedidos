@@ -321,26 +321,38 @@ def _carregar_produtos_seguro():
         return pd.DataFrame(), f"Não foi possível ler o cadastro de produtos: {exc}"
 
 
+def dados_produto(codigo, produtos):
+    """(produto ou None, ean, aviso). Sem EAN a etiqueta sai sem codigo de barras."""
+    if produtos.empty or codigo not in produtos.index:
+        return None, "", "código não encontrado no cadastro"
+    produto = produtos.loc[codigo]
+    ean = str(produto["EAN"] or "").strip()
+    return produto, ean, "" if ean else "sem EAN-13 cadastrado"
+
+
+def montar_etiqueta(item, produtos, quantidade, copias):
+    codigo = normalizar_codigo(item["Codigo"])
+    produto, ean, aviso = dados_produto(codigo, produtos)
+    return {
+        "pedido": item["Pedido"],
+        "codigo": codigo,
+        "descricao": (produto["Descricao"] if produto is not None else "") or item["Descricao"],
+        "referencia": produto["Referencia"] if produto is not None else "",
+        "ean": ean,
+        "quantidade": quantidade or None,
+        "copias": copias,
+        "aviso": aviso,
+    }
+
+
 def etiquetas_padrao(itens_df, produtos):
-    """Etiquetas com os padroes: QTD = quantidade do pedido e 1 copia. Devolve (itens, sem_etiqueta)."""
-    itens, sem_etiqueta = [], []
-    for _, item in itens_df.iterrows():
-        codigo = normalizar_codigo(item["Codigo"])
-        produto, problema = _situacao_etiqueta(codigo, produtos) if not produtos.empty else (None, "Cadastro de produtos indisponível")
-        if produto is None:
-            sem_etiqueta.append(f"{codigo} ({problema})")
-            continue
-        quantidade = int(round(float(item["Quantidade"] or 0)))
-        itens.append({
-            "pedido": item["Pedido"],
-            "codigo": codigo,
-            "descricao": produto["Descricao"] or item["Descricao"],
-            "referencia": produto["Referencia"],
-            "ean": produto["EAN"],
-            "quantidade": quantidade or None,
-            "copias": 1,
-        })
-    return itens, sem_etiqueta
+    """Uma etiqueta por item (QTD = quantidade do pedido, 1 copia). Devolve (itens, avisos)."""
+    itens = [
+        montar_etiqueta(item, produtos, int(round(float(item["Quantidade"] or 0))), 1)
+        for _, item in itens_df.iterrows()
+    ]
+    avisos = [f"{item['codigo']} ({item['aviso']})" for item in itens if item["aviso"]]
+    return itens, avisos
 
 
 def _registrar_historico_etiquetas(itens, data):
@@ -353,14 +365,8 @@ def _registrar_historico_etiquetas(itens, data):
         pass  # o download nao pode falhar por causa do historico
 
 
-def _botao_etiquetas(rotulo, itens, data, nome_arquivo, chave, sem_etiqueta):
-    ajuda = None
-    if sem_etiqueta:
-        ajuda = "Sem etiqueta: " + "; ".join(sem_etiqueta)
-    if not itens:
-        st.button(rotulo, key=chave, disabled=True, use_container_width=True,
-                  help=ajuda or "Nenhum item com EAN-13 cadastrado.")
-        return
+def _botao_etiquetas(rotulo, itens, data, nome_arquivo, chave, avisos):
+    ajuda = ("Sem código de barras: " + "; ".join(avisos)) if avisos else None
     st.download_button(
         rotulo,
         data=gerar_etiquetas_pdf(itens),
@@ -369,6 +375,7 @@ def _botao_etiquetas(rotulo, itens, data, nome_arquivo, chave, sem_etiqueta):
         key=chave,
         on_click=_registrar_historico_etiquetas,
         args=(itens, data),
+        disabled=not itens,
         use_container_width=True,
         help=ajuda,
     )
@@ -426,16 +433,10 @@ def render_picks(df, data, pedidos_dia):
             )
 
     st.caption(
-        "Etiquetas: uma por item com EAN-13, com QTD igual à quantidade do pedido. "
+        "Etiquetas: uma por item, com QTD igual à quantidade do pedido. Itens sem EAN-13 "
+        "cadastrado saem sem código de barras. "
         "Imprima a 100% (sem \"ajustar à página\") no papel 100 x 30 mm."
     )
-
-
-def _situacao_etiqueta(codigo, produtos):
-    if codigo not in produtos.index:
-        return None, "Código não encontrado"
-    ean = str(produtos.at[codigo, "EAN"] or "").strip()
-    return (produtos.loc[codigo], "") if ean else (None, "Produto sem EAN-13 cadastrado")
 
 
 def render_etiquetas(df, data, pedidos_dia):
@@ -444,37 +445,32 @@ def render_etiquetas(df, data, pedidos_dia):
 
 
 def _render_etiquetas_ajustaveis(df, data, pedidos_dia):
-    try:
-        produtos = carregar_produtos()
-    except Exception as exc:
-        st.warning(f"Não foi possível ler o cadastro de produtos: {exc}")
-        return
-    if produtos.empty:
-        st.info("O cadastro de produtos ainda não foi carregado. Rode a atualização do ERP.")
-        return
+    produtos, erro_produtos = _carregar_produtos_seguro()
+    if erro_produtos:
+        st.warning(erro_produtos)
 
     chave_data = data.strftime("%Y%m%d")
     if len(pedidos_dia) > 1:
         pedido = st.selectbox("Pedido", pedidos_dia, key=f"etiquetas_pedido_{chave_data}")
     else:
         pedido = pedidos_dia[0]
+    itens_pedido = df[df["Pedido"] == pedido].reset_index(drop=True)
 
     linhas = []
-    for _, item in df[df["Pedido"] == pedido].iterrows():
+    for _, item in itens_pedido.iterrows():
         codigo = normalizar_codigo(item["Codigo"])
-        produto, problema = _situacao_etiqueta(codigo, produtos)
+        _, ean, aviso = dados_produto(codigo, produtos)
         linhas.append({
-            "Imprimir": produto is not None,
+            "Imprimir": True,
             "Código": codigo,
             "Descrição": item["Descricao"],
-            "EAN": produto["EAN"] if produto is not None else problema,
+            "EAN": ean or f"Sem código de barras ({aviso})",
             "QTD": int(round(float(item["Quantidade"] or 0))),
             "Cópias": 1,
         })
-    tabela = pd.DataFrame(linhas)
 
     editada = st.data_editor(
-        tabela,
+        pd.DataFrame(linhas),
         key=f"etiquetas_tabela_{chave_data}_{pedido}",
         hide_index=True,
         use_container_width=True,
@@ -486,50 +482,21 @@ def _render_etiquetas_ajustaveis(df, data, pedidos_dia):
         },
     )
 
-    sem_etiqueta = tabela[tabela["Imprimir"] == False]  # noqa: E712
-    if not sem_etiqueta.empty:
-        st.warning(
-            f"{len(sem_etiqueta)} item(ns) sem etiqueta: "
-            + "; ".join(f"{linha['Código']} ({linha['EAN']})" for _, linha in sem_etiqueta.iterrows())
-        )
+    itens = [
+        montar_etiqueta(itens_pedido.loc[indice], produtos, int(linha["QTD"] or 0), int(linha["Cópias"] or 1))
+        for indice, linha in editada.iterrows()
+        if linha["Imprimir"]
+    ]
+    sem_codigo = [f"{item['codigo']} ({item['aviso']})" for item in itens if item["aviso"]]
+    if sem_codigo:
+        st.info(f"{len(sem_codigo)} etiqueta(s) sairão sem código de barras: " + "; ".join(sem_codigo))
 
-    marcadas = editada[editada["Imprimir"] & editada["Código"].map(lambda c: _situacao_etiqueta(c, produtos)[0] is not None)]
-    paginas = int(marcadas["Cópias"].fillna(1).clip(lower=1).sum()) if not marcadas.empty else 0
-    chave_pdf = f"etiquetas_pdf_{chave_data}_{pedido}"
-
-    if st.button(f"Gerar etiquetas ({paginas} página(s))", key=f"gerar_{chave_pdf}", disabled=paginas == 0, use_container_width=True):
-        itens = []
-        for _, linha in marcadas.iterrows():
-            produto = produtos.loc[linha["Código"]]
-            quantidade = int(linha["QTD"] or 0)
-            itens.append({
-                "codigo": linha["Código"],
-                "descricao": produto["Descricao"] or linha["Descrição"],
-                "referencia": produto["Referencia"],
-                "ean": produto["EAN"],
-                "quantidade": quantidade or None,
-                "copias": int(linha["Cópias"] or 1),
-            })
-        st.session_state[chave_pdf] = gerar_etiquetas_pdf(itens)
-        try:
-            registrar_etiquetas([
-                [pedido, formatar_data(data), item["codigo"], item["ean"], item["quantidade"] or "", item["copias"]]
-                for item in itens
-            ])
-        except Exception as exc:
-            st.warning(f"Etiquetas geradas, mas não foi possível registrar o histórico: {exc}")
-
-    if chave_pdf in st.session_state:
-        st.download_button(
-            "Baixar etiquetas (PDF)",
-            data=st.session_state[chave_pdf],
-            file_name=f"etiquetas_pedido_{pedido}_{chave_data}.pdf",
-            mime="application/pdf",
-            key=f"baixar_{chave_pdf}",
-            on_click="ignore",
-            use_container_width=True,
-        )
-        st.caption("Imprima a 100% (sem \"ajustar à página\") no papel de etiqueta 100 x 30 mm.")
+    paginas = sum(item["copias"] for item in itens)
+    _botao_etiquetas(
+        f"Baixar etiquetas ajustadas ({paginas} página(s))",
+        itens, data, f"etiquetas_pedido_{pedido}_{chave_data}.pdf",
+        f"etiquetas_ajustadas_{chave_data}_{pedido}", sem_codigo,
+    )
 
 
 def render_detalhe_recebimentos(df, data):

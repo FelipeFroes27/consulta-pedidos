@@ -26,6 +26,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import tomllib
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -41,6 +42,12 @@ PASTA = Path(__file__).resolve().parent
 ABA = "Pedido de compra"
 ABA_PRODUTOS = "Produtos"
 CABECALHO_PRODUTOS = ["Codigo", "Descricao", "Referencia", "EAN", "Outros EAN"]
+ABA_ETIQUETAS = "Etiquetas"
+ABA_SEM_EAN = "Sem EAN"
+CABECALHO_SEM_EAN = [
+    "Codigo", "Descricao", "Referencia", "Pedidos em aberto", "Etiqueta impressa sem EAN",
+    "Situacao", "EAN", "Detectado em", "Cadastrado em", "Reimprimir etiqueta",
+]
 SELECT_PRODUTOS = "produto.produto.cod_produto as c,produto.produto.descricao1 as d,produto.produto.referencia as ref"
 # barra.barras e uma juncao: so traz produtos com codigo de barras, por isso fica numa consulta a parte.
 SELECT_BARRAS = "produto.produto.cod_produto as c,barra.barras as b"
@@ -133,9 +140,19 @@ def consultar_erp(select, filtro):
     try:
         return _consultar(select, filtro)
     except SessaoExpirada:
-        if _conexao_erp()[2] != "direto" or not _recapturar_token():
+        if _conexao_erp()[2] != "direto":
             raise
-        return _consultar(select, filtro)
+    # Sessao local expirou: recaptura o token do ERP aberto. A sessao nova as vezes
+    # demora alguns segundos para valer, entao tenta de novo algumas vezes.
+    for espera in (0, 5, 15):
+        time.sleep(espera)
+        if not _recapturar_token():
+            continue
+        try:
+            return _consultar(select, filtro)
+        except SessaoExpirada:
+            continue
+    raise SessaoExpirada("o ERP recusou a credencial mesmo após recapturar o token. O ERP está aberto em modo debug e logado?")
 
 
 # ==================================================
@@ -223,12 +240,30 @@ def montar_produtos(cadastro, barras):
 # GOOGLE SHEETS
 # ==================================================
 
+_PLANILHA = None
+
+
+def abrir_planilha():
+    global _PLANILHA
+    if _PLANILHA is None:
+        segredos = tomllib.loads((PASTA / ".streamlit" / "secrets.toml").read_text(encoding="utf-8"))
+        credenciais = Credentials.from_service_account_info(
+            segredos["gcp_service_account"], scopes=["https://www.googleapis.com/auth/spreadsheets"],
+        )
+        _PLANILHA = gspread.authorize(credenciais).open_by_key(segredos["spreadsheet_id"])
+    return _PLANILHA
+
+
+def ler_aba(nome):
+    """Linhas da aba como dicionarios; lista vazia se a aba nao existir."""
+    try:
+        return abrir_planilha().worksheet(nome).get_all_records(numericise_ignore=["all"])
+    except gspread.WorksheetNotFound:
+        return []
+
+
 def abrir_aba(nome=ABA, colunas=len(CABECALHO)):
-    segredos = tomllib.loads((PASTA / ".streamlit" / "secrets.toml").read_text(encoding="utf-8"))
-    credenciais = Credentials.from_service_account_info(
-        segredos["gcp_service_account"], scopes=["https://www.googleapis.com/auth/spreadsheets"],
-    )
-    planilha = gspread.authorize(credenciais).open_by_key(segredos["spreadsheet_id"])
+    planilha = abrir_planilha()
     try:
         return planilha.worksheet(nome)
     except gspread.WorksheetNotFound:
@@ -244,6 +279,74 @@ def gravar(aba, linhas, cabecalho=CABECALHO):
     aba.update(valores, "A1", value_input_option="RAW")
     if aba.row_count > total_linhas:
         aba.batch_clear([f"A{total_linhas + 1}:{gspread.utils.rowcol_to_a1(aba.row_count, aba.col_count)}"])
+
+
+# ==================================================
+# ACOMPANHAMENTO DOS PRODUTOS SEM EAN
+# ==================================================
+
+def montar_sem_ean(linhas_pedidos, produtos, etiquetas, anteriores, hoje):
+    """Linhas da aba "Sem EAN".
+
+    Acompanha os produtos sem EAN-13 que estao em pedidos de compra em aberto ou que ja
+    tiveram etiqueta impressa sem codigo de barras. Quando o ERP passa a ter o EAN, marca
+    "EAN cadastrado" com a data e, se a etiqueta saiu sem codigo, pede a reimpressao.
+    Devolve (linhas, codigos que receberam EAN nesta execucao).
+    """
+    ean_atual = {linha[0]: linha[3] for linha in produtos}
+    cadastro = {linha[0]: (linha[1], linha[2]) for linha in produtos}
+
+    pedidos_por_codigo = {}
+    for linha in linhas_pedidos:
+        pedidos_por_codigo.setdefault(linha[8], set()).add(linha[1])
+
+    impressos_sem_ean = {
+        str(r.get("Codigo", "")).strip().zfill(5)
+        for r in etiquetas
+        if str(r.get("Codigo", "")).strip() and not str(r.get("EAN", "")).strip()
+    }
+    anterior = {str(r.get("Codigo", "")).strip().zfill(5): r for r in anteriores if str(r.get("Codigo", "")).strip()}
+
+    candidatos = {c for c in pedidos_por_codigo if not ean_atual.get(c)} | impressos_sem_ean | set(anterior)
+    linhas, novos = [], []
+    for codigo in candidatos:
+        ant = anterior.get(codigo, {})
+        ean = ean_atual.get(codigo, "")
+        em_aberto = sorted(pedidos_por_codigo.get(codigo, []))
+        impresso = codigo in impressos_sem_ean
+        if ean:
+            cadastrado_em = str(ant.get("Cadastrado em", "")).strip() or hoje
+            if not str(ant.get("Cadastrado em", "")).strip() and ant:
+                novos.append(codigo)
+            # Depois de 30 dias cadastrado, sai da lista.
+            if (datetime.strptime(hoje, "%d/%m/%Y") - datetime.strptime(cadastrado_em, "%d/%m/%Y")).days > 30:
+                continue
+            situacao = "EAN cadastrado"
+        else:
+            if not em_aberto and not impresso:
+                continue  # nada mais a acompanhar
+            cadastrado_em, situacao = "", "Aguardando cadastro"
+        descricao, referencia = cadastro.get(codigo, (ant.get("Descricao", ""), ant.get("Referencia", "")))
+        linhas.append([
+            codigo, descricao, referencia, " ".join(em_aberto), "Sim" if impresso else "Não",
+            situacao, ean, str(ant.get("Detectado em", "")).strip() or hoje, cadastrado_em,
+            "Sim" if ean and impresso else "",
+        ])
+
+    linhas.sort(key=lambda l: (l[5] != "EAN cadastrado", l[0]))
+    return linhas, novos
+
+
+def acompanhar_sem_ean(linhas_pedidos, produtos):
+    hoje = date.today().strftime("%d/%m/%Y")
+    linhas, novos = montar_sem_ean(
+        linhas_pedidos, produtos, ler_aba(ABA_ETIQUETAS), ler_aba(ABA_SEM_EAN), hoje,
+    )
+    aguardando = sum(1 for linha in linhas if linha[5] == "Aguardando cadastro")
+    gravar(abrir_aba(ABA_SEM_EAN, len(CABECALHO_SEM_EAN)), linhas, CABECALHO_SEM_EAN)
+    print(f"Aba '{ABA_SEM_EAN}' atualizada: {aguardando} produto(s) aguardando EAN.")
+    if novos:
+        print("EAN cadastrado no ERP desde a última verificação: " + ", ".join(novos))
 
 
 def main():
@@ -287,6 +390,8 @@ def main():
 
     gravar(abrir_aba(ABA_PRODUTOS, len(CABECALHO_PRODUTOS)), produtos, CABECALHO_PRODUTOS)
     print(f"Aba '{ABA_PRODUTOS}' atualizada.")
+
+    acompanhar_sem_ean(linhas, produtos)
 
 
 if __name__ == "__main__":

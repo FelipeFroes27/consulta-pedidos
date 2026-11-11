@@ -165,8 +165,15 @@ def _desenhar_etiqueta(c, item, moldura=False):
     for indice, linha in enumerate(linhas):
         c.drawCentredString(CENTRO_DIREITA, _y(6) - indice * tamanho * 1.15, linha)
 
+    ean = str(item.get("ean") or "").strip()
+    if not ean13_valido(ean):
+        # Produto sem EAN-13 cadastrado: etiqueta sai sem codigo de barras, com o aviso no lugar.
+        c.setFont(FONTE_NEGRITO, 8)
+        c.drawCentredString(CENTRO_DIREITA, _y(17), "SEM EAN-13 CADASTRADO")
+        return
+
     # Codigo de barras: vetor, uma barra por sequencia de modulos pretos
-    padrao = modulos_ean13(item["ean"])
+    padrao = modulos_ean13(ean)
     x0 = CENTRO_DIREITA - len(padrao) * MODULO / 2
     y0, altura = _y(21.5), 11 * mm
     inicio = None
@@ -178,7 +185,7 @@ def _desenhar_etiqueta(c, item, moldura=False):
             inicio = None
 
     c.setFont(FONTE, 7)
-    c.drawCentredString(CENTRO_DIREITA, _y(25.5), ean_legivel(item["ean"]))
+    c.drawCentredString(CENTRO_DIREITA, _y(25.5), ean_legivel(ean))
 
 
 def gerar_etiquetas_pdf(itens, moldura=False):
