@@ -4,16 +4,29 @@ import streamlit as st
 import pandas as pd
 import gspread
 import unicodedata
-from datetime import datetime
+from datetime import date, datetime
 from google.oauth2.service_account import Credentials
 
 
-SPREADSHEET_ID = "1JU-8v_mxydxgDFwWg_aSURHBeM0PyOQPkUBe-LqitXk"
+SPREADSHEET_ID_PADRAO = "1JU-8v_mxydxgDFwWg_aSURHBeM0PyOQPkUBe-LqitXk"
+
+
+def _spreadsheet_id():
+    # Defina spreadsheet_id = "..." no secrets.toml (local e Streamlit Cloud) para trocar de base.
+    return st.secrets.get("spreadsheet_id", SPREADSHEET_ID_PADRAO)
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
 ]
+
+# Linhas do Historico com "Data de recebimento" anterior a esta data foram gravadas
+# pela versao antiga, que salvava a data do clique em "Data de entrega (sistema)".
+# Para elas, o recebimento cobre todas as entregas do pedido agendadas ate aquela data.
+INICIO_CONFIRMACAO_POR_DATA = date(2026, 11, 12)
+
+
+class PlanilhaIndisponivel(RuntimeError):
+    """A conta de servico nao consegue abrir a planilha configurada."""
 
 
 @st.cache_resource
@@ -29,26 +42,50 @@ def conectar():
 
 @st.cache_resource
 def abrir_planilha():
-    return conectar().open_by_key(SPREADSHEET_ID)
+    try:
+        return conectar().open_by_key(_spreadsheet_id())
+    except (gspread.SpreadsheetNotFound, PermissionError) as exc:
+        email = st.secrets["gcp_service_account"].get("client_email", "da conta de servico")
+        raise PlanilhaIndisponivel(
+            "Planilha não encontrada. Verifique se o spreadsheet_id nos secrets está correto "
+            f"e se a planilha está compartilhada como Editor com {email}."
+        ) from exc
+
+
+ABA_PEDIDOS = ["Pedidos", "Pedido de compra"]
+ABA_HISTORICO = "Histórico"
+ABA_EMBARQUES = "Embarques"
+CABECALHO_HISTORICO = ["Pedido", "Data de entrega (sistema)", "Data de recebimento"]
+
+
+def _aba(*nomes, obrigatoria=True):
+    planilha = abrir_planilha()
+    for nome in nomes:
+        try:
+            return planilha.worksheet(nome)
+        except gspread.WorksheetNotFound:
+            continue
+    if not obrigatoria:
+        return None
+    opcoes = " ou ".join(f'"{nome}"' for nome in nomes)
+    raise PlanilhaIndisponivel(f"A planilha não tem a aba {opcoes}.")
+
+
+def _registros(aba):
+    if aba is None:
+        return pd.DataFrame()
+    return pd.DataFrame(aba.get_all_records(numericise_ignore=["all"]))
 
 
 @st.cache_data(ttl=300)
 def carregar_dados():
 
-    planilha = abrir_planilha()
-
-    aba = planilha.worksheet("Pedidos")
-
-    dados = aba.get_all_records(numericise_ignore=["all"])
-
-    return pd.DataFrame(dados)
+    return _registros(_aba(*ABA_PEDIDOS))
 
 
+@st.cache_data(ttl=60)
 def carregar_historico_recebimentos():
-    planilha = abrir_planilha()
-    aba = planilha.worksheet("Histórico")
-    dados = aba.get_all_records(numericise_ignore=["all"])
-    return pd.DataFrame(dados)
+    return _registros(_aba(ABA_HISTORICO, obrigatoria=False))
 
 
 @st.cache_data(ttl=300)
@@ -91,59 +128,127 @@ def localizar_pedido(numero_pedido):
     return df[filtro].copy()
 
 
-def recebimento_ja_registrado(numero_pedido):
-    numero_pedido = str(numero_pedido or "").strip()
-    if not numero_pedido:
-        return False
+# ==================================================
+# RECEBIMENTOS (confirmacao por pedido + data agendada)
+# ==================================================
 
-    historico = carregar_historico_recebimentos()
-    if historico.empty:
-        return False
-
-    coluna_pedido = _encontrar_coluna(historico, ["Pedido", "Numero do Pedido", "Número do Pedido"])
-    if coluna_pedido is None:
-        return False
-
-    return bool((historico[coluna_pedido].fillna("").astype(str).str.strip() == numero_pedido).any())
+def _para_data(valor):
+    if isinstance(valor, datetime):
+        return valor.date()
+    if isinstance(valor, date):
+        return valor
+    convertida = pd.to_datetime(str(valor or "").strip(), errors="coerce", dayfirst=True)
+    return None if pd.isna(convertida) else convertida.date()
 
 
-def registrar_recebimento(numero_pedido, pedido):
-    numero_pedido = str(numero_pedido or "").strip()
-    if not numero_pedido:
-        raise ValueError("Informe o numero do pedido.")
+class RecebimentosRegistrados:
+    """Indice do Historico para saber se uma entrega (pedido + data) ja foi confirmada."""
 
-    if recebimento_ja_registrado(numero_pedido):
-        raise ValueError("Este pedido ja possui recebimento registrado.")
+    def __init__(self, historico):
+        self._exatos = set()
+        self._legado = {}
+        self._sem_data = set()
 
-    planilha = abrir_planilha()
-    aba = planilha.worksheet("Histórico")
-    headers = aba.row_values(1)
-    linha = []
+        if historico is None or historico.empty:
+            return
+
+        coluna_pedido = _encontrar_coluna(historico, ["Pedido", "Numero do Pedido", "Número do Pedido"])
+        if coluna_pedido is None:
+            return
+        coluna_entrega = _encontrar_coluna(historico, ["Data de entrega (sistema)"])
+        coluna_recebimento = _encontrar_coluna(historico, ["Data de recebimento"])
+
+        for _, linha in historico.iterrows():
+            pedido = str(linha.get(coluna_pedido, "") or "").strip()
+            if not pedido:
+                continue
+
+            entrega = _para_data(linha.get(coluna_entrega)) if coluna_entrega else None
+            recebimento = _para_data(linha.get(coluna_recebimento)) if coluna_recebimento else None
+
+            if entrega is None and recebimento is None:
+                self._sem_data.add(pedido)
+                continue
+
+            if entrega is not None:
+                self._exatos.add((pedido, entrega))
+
+            referencia = recebimento or entrega
+            if referencia < INICIO_CONFIRMACAO_POR_DATA:
+                self._legado[pedido] = max(referencia, self._legado.get(pedido, referencia))
+
+    def contem(self, pedido, data_agendada):
+        pedido = str(pedido or "").strip()
+        data_agendada = _para_data(data_agendada)
+        if not pedido:
+            return False
+        if pedido in self._sem_data:
+            return True
+        if data_agendada is None:
+            return False
+        if (pedido, data_agendada) in self._exatos:
+            return True
+        limite_legado = self._legado.get(pedido)
+        return limite_legado is not None and data_agendada <= limite_legado
+
+
+def recebimentos_registrados():
+    return RecebimentosRegistrados(carregar_historico_recebimentos())
+
+
+def registrar_recebimentos(entregas):
+    """Grava no Historico uma linha por (pedido, data agendada) ainda nao confirmada.
+
+    Faz uma leitura do Historico e uma unica escrita em lote. Retorna quantas
+    linhas foram gravadas.
+    """
+    pendentes = []
+    vistos = set()
+    for pedido, data_agendada in entregas:
+        pedido = str(pedido or "").strip()
+        data_agendada = _para_data(data_agendada)
+        if not pedido or data_agendada is None or (pedido, data_agendada) in vistos:
+            continue
+        vistos.add((pedido, data_agendada))
+        pendentes.append((pedido, data_agendada))
+
+    if not pendentes:
+        return 0
+
+    aba = _aba(ABA_HISTORICO, obrigatoria=False)
+    if aba is None:
+        aba = abrir_planilha().add_worksheet(ABA_HISTORICO, rows=1000, cols=len(CABECALHO_HISTORICO))
+        aba.update([CABECALHO_HISTORICO], "A1")
+    valores = aba.get_all_values()
+    headers = valores[0] if valores else []
+    if not headers:
+        raise ValueError("A aba Histórico está sem cabeçalho.")
+
+    registrados = RecebimentosRegistrados(pd.DataFrame(valores[1:], columns=headers))
+    pendentes = [(pedido, data_agendada) for pedido, data_agendada in pendentes if not registrados.contem(pedido, data_agendada)]
+    if not pendentes:
+        carregar_historico_recebimentos.clear()
+        return 0
 
     data_recebimento = datetime.now().strftime("%d/%m/%Y")
+    linhas = []
+    for pedido, data_agendada in pendentes:
+        linha = []
+        for header in headers:
+            header_normalizado = _normalizar_nome_coluna(header)
+            if header_normalizado in ["pedido", "numero do pedido"]:
+                linha.append(pedido)
+            elif header_normalizado == "data de entrega (sistema)":
+                linha.append(data_agendada.strftime("%d/%m/%Y"))
+            elif header_normalizado == "data de recebimento":
+                linha.append(data_recebimento)
+            else:
+                linha.append("")
+        linhas.append(linha)
 
-    for header in headers:
-        header_normalizado = _normalizar_nome_coluna(header)
-        if header_normalizado in ["pedido", "numero do pedido"]:
-            linha.append(numero_pedido)
-        elif header_normalizado == "data de entrega (sistema)":
-            linha.append(data_recebimento)
-        elif header_normalizado == "data de recebimento":
-            linha.append(data_recebimento)
-        else:
-            linha.append("")
-
-    aba.append_row(linha, value_input_option="RAW")
-
-
-def _texto_chave(serie):
-    return (
-        serie.fillna("")
-        .astype(str)
-        .str.strip()
-        .str.upper()
-        .str.replace(r"\s+", "", regex=True)
-    )
+    aba.append_rows(linhas, value_input_option="RAW")
+    carregar_historico_recebimentos.clear()
+    return len(linhas)
 
 
 def _normalizar_nome_coluna(nome):
@@ -160,102 +265,21 @@ def _encontrar_coluna(df, nomes):
     return None
 
 
-def _colunas_deduplicacao_embarques(df):
-    coluna_numero = _encontrar_coluna(df, ["Numero", "NF", "Nota Fiscal"])
-    coluna_embarque = _encontrar_coluna(df, ["Numero do embarque", "Embarque"])
-    coluna_pedido_venda = _encontrar_coluna(df, ["Pedido de venda", "Pedido venda", "PV"])
-    coluna_codigo_nome = _encontrar_coluna(df, ["Código - nome", "Codigo - nome", "Codigo nome", "Código nome"])
-    colunas = [coluna_numero, coluna_embarque, coluna_pedido_venda, coluna_codigo_nome]
-    return colunas if all(colunas) else None
-
-
-def _adicionar_chaves_deduplicacao(df, colunas):
-    coluna_numero, coluna_embarque, coluna_pedido_venda, coluna_codigo_nome = colunas
-    df = df.copy()
-    df["_dedup_numero"] = _texto_chave(df[coluna_numero])
-    df["_dedup_embarque"] = _texto_chave(df[coluna_embarque])
-    df["_dedup_pedido_venda"] = _texto_chave(df[coluna_pedido_venda])
-    df["_dedup_codigo_nome"] = _texto_chave(df[coluna_codigo_nome])
-    return df
-
-
-def _remover_duplicados_embarques(df):
-    colunas = _colunas_deduplicacao_embarques(df)
-
-    if not colunas:
-        return df
-
-    linhas_antes = len(df)
-    df = _adicionar_chaves_deduplicacao(df, colunas)
-    df = (
-        df.drop_duplicates(
-            subset=["_dedup_numero", "_dedup_embarque", "_dedup_pedido_venda", "_dedup_codigo_nome"],
-            keep="first",
-        )
-        .drop(columns=["_dedup_numero", "_dedup_embarque", "_dedup_pedido_venda", "_dedup_codigo_nome"])
-        .copy()
-    )
-    st.session_state["embarques_duplicados_removidos"] = (
-        st.session_state.get("embarques_duplicados_removidos", 0) + linhas_antes - len(df)
-    )
-    return df
-
-
-def _linhas_duplicadas_embarques(df):
-    colunas = _colunas_deduplicacao_embarques(df)
-    if not colunas:
-        return []
-
-    df_chaves = _adicionar_chaves_deduplicacao(df, colunas)
-    duplicadas = df_chaves.duplicated(
-        subset=["_dedup_numero", "_dedup_embarque", "_dedup_pedido_venda", "_dedup_codigo_nome"],
-        keep="first",
-    )
-    return [indice + 2 for indice, duplicada in enumerate(duplicadas) if duplicada]
-
-
-def _agrupar_linhas_contiguas(linhas):
-    if not linhas:
-        return []
-
-    ranges = []
-    inicio = fim = linhas[0]
-
-    for linha in linhas[1:]:
-        if linha == fim + 1:
-            fim = linha
-        else:
-            ranges.append((inicio, fim))
-            inicio = fim = linha
-
-    ranges.append((inicio, fim))
-    return ranges
-
-
-def _excluir_linhas_duplicadas_na_aba(aba, linhas):
-    removidas = 0
-    for inicio, fim in reversed(_agrupar_linhas_contiguas(sorted(linhas))):
-        aba.delete_rows(inicio, fim)
-        removidas += fim - inicio + 1
-    return removidas
-
+# ==================================================
+# EMBARQUES
+# ==================================================
 
 @st.cache_data(ttl=300)
 def carregar_embarques():
+    """Le a aba Embarques sem alterar a planilha.
 
-    planilha = abrir_planilha()
+    Remove em memoria apenas linhas 100% identicas (todas as colunas iguais),
+    que sao as repeticoes de importacao. Volumes diferentes do mesmo produto na
+    mesma NF continuam sendo contados.
+    """
+    df = _registros(_aba(ABA_EMBARQUES, obrigatoria=False))
+    if df.empty:
+        return df
 
-    aba = planilha.worksheet("Embarques")
-
-    dados = aba.get_all_records(numericise_ignore=["all"])
-    df = pd.DataFrame(dados)
-    st.session_state["embarques_duplicados_removidos"] = 0
-
-    linhas_duplicadas = _linhas_duplicadas_embarques(df)
-    if linhas_duplicadas:
-        removidas = _excluir_linhas_duplicadas_na_aba(aba, linhas_duplicadas)
-        st.session_state["embarques_duplicados_removidos"] = removidas
-        dados = aba.get_all_records(numericise_ignore=["all"])
-        df = pd.DataFrame(dados)
-
-    return _remover_duplicados_embarques(df)
+    chave = df.fillna("").astype(str).apply(lambda coluna: coluna.str.strip())
+    return df[~chave.duplicated(keep="first")].copy()

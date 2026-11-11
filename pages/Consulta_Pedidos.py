@@ -4,7 +4,7 @@ from pathlib import Path
 import streamlit as st
 import pandas as pd
 from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
-from utils.sheets import carregar_dados
+from utils.sheets import PlanilhaIndisponivel, carregar_dados, _encontrar_coluna as encontrar_coluna
 
 # ==================================================
 # CONFIGURAÇÃO DA PÁGINA
@@ -212,320 +212,136 @@ st.markdown(
 # CARREGAR DADOS
 # ==================================================
 
-df = carregar_dados()
+try:
+    df = carregar_dados()
+except PlanilhaIndisponivel as exc:
+    st.error(str(exc))
+    st.stop()
+
+if df.empty:
+    st.info("A aba Pedidos ainda não tem registros.")
+    st.stop()
 
 # ==================================================
-# PRESERVAR ZEROS À ESQUERDA
+# COLUNAS (a base pode vir com nomes diferentes)
 # ==================================================
 
-df["Numero do Pedido"] = (
-    df["Numero do Pedido"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
-)
-
-df["Codigo"] = (
-    df["Codigo"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
-)
-
-# ==================================================
-# CAMPOS TEXTO
-# ==================================================
-
-colunas_texto = [
-    "Descricao",
-    "Referência",
-    "Subgrupo",
-    "Marca",
-    "Categoria",
-    "Grupo",
-    "Tipo"
+FILTROS = [
+    ("Pedido", ["Numero do Pedido", "Número do Pedido", "Pedido"]),
+    ("Código", ["Codigo", "Código"]),
+    ("Descrição", ["Descricao", "Descrição"]),
+    ("Fornecedor", ["Forcededor", "Nome Fornecedor", "Razao Social Fornecedor"]),
+    ("Empresa", ["Empresa"]),
+    ("Referência", ["Referência", "Referencia"]),
+    ("Marca", ["Marca"]),
+    ("Subgrupo", ["Subgrupo"]),
+    ("Categoria", ["Categoria"]),
+    ("Grupo", ["Grupo"]),
+    ("Tipo", ["Tipo"]),
 ]
 
-for col in colunas_texto:
-    df[col] = (
-        df[col]
-        .fillna("")
-        .astype(str)
-        .str.strip()
-    )
+filtros_disponiveis = []
+for rotulo, nomes in FILTROS:
+    nome_coluna = encontrar_coluna(df, nomes)
+    if nome_coluna is not None:
+        df[nome_coluna] = df[nome_coluna].fillna("").astype(str).str.strip()
+        filtros_disponiveis.append((rotulo, nome_coluna))
 
-# ==================================================
-# DATAS
-# ==================================================
+colunas = dict(filtros_disponiveis)
+coluna_pedido = colunas.get("Pedido")
+if coluna_pedido is None:
+    st.error("A aba de pedidos não tem a coluna \"Numero do Pedido\".")
+    st.stop()
 
-df["Data Emissao"] = pd.to_datetime(
-    df["Data Emissao"],
-    errors="coerce",
-    dayfirst=True
-)
+coluna_emissao = encontrar_coluna(df, ["Data Emissao", "Data de Emissão"])
+coluna_entrega = encontrar_coluna(df, ["Data Entrega", "Data de Entrega"])
+coluna_qtde = encontrar_coluna(df, ["Qtde", "Quantidade", "Qtd"])
 
-df["Data Entrega"] = pd.to_datetime(
-    df["Data Entrega"],
-    errors="coerce",
-    dayfirst=True
-)
+for nome_coluna in [coluna_emissao, coluna_entrega]:
+    if nome_coluna is not None:
+        df[nome_coluna] = pd.to_datetime(df[nome_coluna], errors="coerce", dayfirst=True)
 
-# ==================================================
-# LIMITES DE DATA
-# ==================================================
 
-data_min_emissao = df["Data Emissao"].min().date()
-data_max_emissao = df["Data Emissao"].max().date()
+def limites_data(serie):
+    hoje = pd.Timestamp.today().date()
+    if serie.notna().any():
+        return serie.min().date(), serie.max().date()
+    return hoje, hoje
 
-data_min_entrega = df["Data Entrega"].min().date()
-data_max_entrega = df["Data Entrega"].max().date()
 
 # ==================================================
 # FILTROS
 # ==================================================
 
-col1, col2, col3, col4 = st.columns(4)
+campos = [("filtro", rotulo, nome_coluna) for rotulo, nome_coluna in filtros_disponiveis]
+if coluna_emissao is not None:
+    campos.append(("data", "Emissão", coluna_emissao))
+if coluna_entrega is not None:
+    campos.append(("data", "Entrega", coluna_entrega))
+campos.append(("botao", None, None))
 
-with col1:
-
-    pedido = st.multiselect(
-        "Pedido",
-        sorted(df["Numero do Pedido"].unique()),
-        placeholder="Selecionar..."
-    )
-
-with col2:
-
-    codigo = st.multiselect(
-        "Código",
-        sorted(df["Codigo"].unique()),
-        placeholder="Selecionar..."
-    )
-
-with col3:
-
-    referencia = st.multiselect(
-        "Referência",
-        sorted(df["Referência"].unique()),
-        placeholder="Selecionar..."
-    )
-
-with col4:
-
-    marca = st.multiselect(
-        "Marca",
-        sorted(df["Marca"].unique()),
-        placeholder="Selecionar..."
-    )
-
-# ==================================================
-
-col5, col6, col7, col8 = st.columns(4)
-
-with col5:
-
-    descricao = st.multiselect(
-        "Descrição",
-        sorted(df["Descricao"].unique()),
-        placeholder="Selecionar..."
-    )
-
-with col6:
-
-    subgrupo = st.multiselect(
-        "Subgrupo",
-        sorted(df["Subgrupo"].unique()),
-        placeholder="Selecionar..."
-    )
-
-with col7:
-
-    categoria = st.multiselect(
-        "Categoria",
-        sorted(df["Categoria"].unique()),
-        placeholder="Selecionar..."
-    )
-
-with col8:
-
-    grupo = st.multiselect(
-        "Grupo",
-        sorted(df["Grupo"].unique()),
-        placeholder="Selecionar..."
-    )
-
-# ==================================================
-
-col9, col10, col11, col12 = st.columns(4)
-
-with col9:
-
-    tipo = st.multiselect(
-        "Tipo",
-        sorted(df["Tipo"].unique()),
-        placeholder="Selecionar..."
-    )
-
-with col10:
-
-    periodo_emissao = st.date_input(
-        "Emissão",
-        value=(
-            data_min_emissao,
-            data_max_emissao
-        )
-    )
-
-with col11:
-
-    periodo_entrega = st.date_input(
-        "Entrega",
-        value=(
-            data_min_entrega,
-            data_max_entrega
-        )
-    )
-
-with col12:
-
-    st.write("")
-    st.write("")
-
-    pesquisar = st.button(
-        "🔍 Pesquisar",
-        use_container_width=True
-    )
+selecoes = {}
+periodos = {}
+pesquisar = False
+for inicio in range(0, len(campos), 4):
+    colunas_linha = st.columns(4)
+    for coluna_layout, (tipo, rotulo, nome_coluna) in zip(colunas_linha, campos[inicio:inicio + 4]):
+        with coluna_layout:
+            if tipo == "filtro":
+                opcoes = sorted(valor for valor in df[nome_coluna].unique() if valor)
+                selecoes[nome_coluna] = st.multiselect(rotulo, opcoes, placeholder="Selecionar...")
+            elif tipo == "data":
+                limites = limites_data(df[nome_coluna])
+                periodos[nome_coluna] = (limites, st.date_input(rotulo, value=limites))
+            else:
+                st.write("")
+                st.write("")
+                pesquisar = st.button("🔍 Pesquisar", use_container_width=True)
 
 # ==================================================
 # RESULTADOS
 # ==================================================
 
 if pesquisar:
-
     resultado = df.copy()
 
-    if pedido:
-        resultado = resultado[
-            resultado["Numero do Pedido"].isin(pedido)
-        ]
+    for nome_coluna, valores in selecoes.items():
+        if valores:
+            resultado = resultado[resultado[nome_coluna].isin(valores)]
 
-    if codigo:
-        resultado = resultado[
-            resultado["Codigo"].isin(codigo)
-        ]
+    for nome_coluna, (limites, periodo) in periodos.items():
+        # Sem alterar o periodo padrao, mantem tambem os pedidos sem data.
+        if len(periodo) == 2 and tuple(periodo) != tuple(limites):
+            resultado = resultado[
+                (resultado[nome_coluna] >= pd.to_datetime(periodo[0]))
+                & (resultado[nome_coluna] <= pd.to_datetime(periodo[1]))
+            ]
 
-    if descricao:
-        resultado = resultado[
-            resultado["Descricao"].isin(descricao)
-        ]
-
-    if referencia:
-        resultado = resultado[
-            resultado["Referência"].isin(referencia)
-        ]
-
-    if subgrupo:
-        resultado = resultado[
-            resultado["Subgrupo"].isin(subgrupo)
-        ]
-
-    if marca:
-        resultado = resultado[
-            resultado["Marca"].isin(marca)
-        ]
-
-    if categoria:
-        resultado = resultado[
-            resultado["Categoria"].isin(categoria)
-        ]
-
-    if grupo:
-        resultado = resultado[
-            resultado["Grupo"].isin(grupo)
-        ]
-
-    if tipo:
-        resultado = resultado[
-            resultado["Tipo"].isin(tipo)
-        ]
-
-    # ==========================================
-    # FILTRO DATA EMISSÃO
-    # ==========================================
-
-    if len(periodo_emissao) == 2:
-
-        resultado = resultado[
-            (
-                resultado["Data Emissao"]
-                >= pd.to_datetime(periodo_emissao[0])
-            )
-            &
-            (
-                resultado["Data Emissao"]
-                <= pd.to_datetime(periodo_emissao[1])
-            )
-        ]
-
-    # ==========================================
-    # FILTRO DATA ENTREGA
-    # ==========================================
-
-    if len(periodo_entrega) == 2:
-
-        resultado = resultado[
-            (
-                resultado["Data Entrega"]
-                >= pd.to_datetime(periodo_entrega[0])
-            )
-            &
-            (
-                resultado["Data Entrega"]
-                <= pd.to_datetime(periodo_entrega[1])
-            )
-        ]
-
-    # ==========================================
-    # FORMATAÇÃO
-    # ==========================================
-
-    resultado["Data Entrega"] = resultado[
-        "Data Entrega"
-    ].dt.strftime("%d/%m/%Y")
-
-    resultado = resultado[
-        [
-            "Numero do Pedido",
-            "Data Entrega",
-            "Codigo",
-            "Descricao",
-            "Qtde"
-        ]
+    exibir = [
+        ("Número do Pedido", coluna_pedido),
+        ("Data Entrega", coluna_entrega),
+        ("Fornecedor", colunas.get("Fornecedor")),
+        ("Código", colunas.get("Código")),
+        ("Descrição", colunas.get("Descrição")),
+        ("Quantidade", coluna_qtde),
     ]
+    exibir = [(rotulo, nome_coluna) for rotulo, nome_coluna in exibir if nome_coluna is not None]
 
-    for coluna_texto in ["Numero do Pedido", "Codigo"]:
-        resultado[coluna_texto] = resultado[coluna_texto].fillna("").astype("string")
-
-    resultado = resultado.rename(
-        columns={
-            "Numero do Pedido": "Número do Pedido",
-            "Codigo": "Código",
-            "Descricao": "Descrição",
-            "Qtde": "Quantidade",
-        }
-    )
+    resultado = resultado[[nome_coluna for _, nome_coluna in exibir]].copy()
+    resultado.columns = [rotulo for rotulo, _ in exibir]
+    if "Data Entrega" in resultado.columns:
+        resultado["Data Entrega"] = resultado["Data Entrega"].dt.strftime("%d/%m/%Y").fillna("")
+    for rotulo in ["Número do Pedido", "Código"]:
+        if rotulo in resultado.columns:
+            resultado[rotulo] = resultado[rotulo].astype("string")
 
     st.session_state["consulta_resultado"] = resultado
-    st.session_state["consulta_total_resultados"] = len(resultado)
 
 if "consulta_resultado" in st.session_state:
     resultado = st.session_state["consulta_resultado"]
 
     st.divider()
-
-    st.caption(
-        f"{st.session_state.get('consulta_total_resultados', len(resultado))} registro(s) encontrado(s)"
-    )
+    st.caption(f"{len(resultado)} registro(s) encontrado(s)")
 
     st.dataframe(
         resultado,

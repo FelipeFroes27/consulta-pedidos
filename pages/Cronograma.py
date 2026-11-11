@@ -8,7 +8,14 @@ import pandas as pd
 import streamlit as st
 
 from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
-from utils.sheets import carregar_dados, carregar_embarques, recebimento_ja_registrado, registrar_recebimento
+from utils.sheets import (
+    PlanilhaIndisponivel,
+    carregar_dados,
+    carregar_embarques,
+    carregar_historico_recebimentos,
+    recebimentos_registrados,
+    registrar_recebimentos,
+)
 
 
 st.set_page_config(page_title="Agenda Logística", layout="wide", initial_sidebar_state="expanded")
@@ -56,6 +63,13 @@ def numero(valor):
     return f"{int(valor):,}".replace(",", ".")
 
 
+def converter_numero(serie):
+    texto = serie.fillna("").astype(str).str.strip()
+    tem_virgula = texto.str.contains(",", regex=False)
+    texto = texto.where(~tem_virgula, texto.str.replace(".", "", regex=False).str.replace(",", ".", regex=False))
+    return pd.to_numeric(texto, errors="coerce").fillna(0)
+
+
 def total_itens(df):
     if df.empty or "Quantidade" not in df.columns:
         return 0
@@ -79,7 +93,7 @@ def preparar_recebimentos(df_original):
     df = df_original.copy()
     coluna_data = encontrar_coluna(df, ["Data Entrega", "Data de entrega", "Entrega"])
     coluna_pedido = encontrar_coluna(df, ["Numero do Pedido", "Numero Pedido", "Pedido"])
-    coluna_fornecedor = encontrar_coluna(df, ["Subgrupo", "Fornecedor"])
+    coluna_fornecedor = encontrar_coluna(df, ["Forcededor", "Nome Fornecedor", "Razao Social Fornecedor", "Subgrupo", "Fornecedor"])
     coluna_grupo = encontrar_coluna(df, ["Grupo"])
     coluna_codigo = encontrar_coluna(df, ["Codigo", "Codigo Produto", "Cod"])
     coluna_descricao = encontrar_coluna(df, ["Descricao", "Descricao Produto", "Produto"])
@@ -110,7 +124,7 @@ def preparar_recebimentos(df_original):
     df["Grupo"] = texto_serie(df[coluna_grupo]) if coluna_grupo else "Não informado"
     df["Codigo"] = texto_serie(df[coluna_codigo], "") if coluna_codigo else ""
     df["Descricao"] = texto_serie(df[coluna_descricao], "") if coluna_descricao else ""
-    df["Quantidade"] = pd.to_numeric(df[coluna_qtde], errors="coerce").fillna(0) if coluna_qtde else 1
+    df["Quantidade"] = converter_numero(df[coluna_qtde]) if coluna_qtde else 1
 
     return df[
         [
@@ -367,7 +381,7 @@ def abrir_detalhe_dia(data, recebimentos, embarques):
     indice = 0
     if not recebimentos_dia.empty:
         with tabs[indice]:
-            render_detalhe_recebimentos(recebimentos_dia)
+            render_detalhe_recebimentos(recebimentos_dia, data)
         indice += 1
 
     if not embarques_dia.empty:
@@ -375,7 +389,7 @@ def abrir_detalhe_dia(data, recebimentos, embarques):
             render_detalhe_embarques(embarques_dia)
 
 
-def render_detalhe_recebimentos(df):
+def render_detalhe_recebimentos(df, data):
     pedidos = df["Pedido"].nunique()
     itens = int(df["Quantidade"].sum())
     fornecedores = df["Fornecedor"].nunique()
@@ -392,10 +406,19 @@ def render_detalhe_recebimentos(df):
     )
 
     pedidos_dia = [str(pedido).strip() for pedido in df["Pedido"].dropna().unique() if str(pedido).strip()]
-    pedidos_pendentes = [pedido for pedido in pedidos_dia if not recebimento_ja_registrado(pedido)]
+    try:
+        registrados = recebimentos_registrados()
+    except Exception as exc:
+        registrados = None
+        st.warning(f"Não foi possível ler a aba Histórico: {exc}")
+    pedidos_pendentes = (
+        [pedido for pedido in pedidos_dia if not registrados.contem(pedido, data)] if registrados else []
+    )
 
     st.markdown("**Confirmação de recebimento**")
-    if not pedidos_dia:
+    if registrados is None:
+        pass
+    elif not pedidos_dia:
         st.info("Nenhum pedido encontrado para confirmar.")
     elif not pedidos_pendentes:
         st.markdown(
@@ -404,26 +427,14 @@ def render_detalhe_recebimentos(df):
         )
     else:
         texto_botao = "Confirmar recebimento do dia" if len(pedidos_pendentes) == 1 else "Confirmar recebimentos do dia"
-        chave_data = pd.to_datetime(df["Data Agenda"].iloc[0], errors="coerce")
-        chave_data = chave_data.strftime("%Y%m%d") if pd.notna(chave_data) else "sem_data"
-        if st.button(texto_botao, key=f"confirmar_recebimentos_{chave_data}", use_container_width=True):
-            erros = []
-            confirmados = 0
-            for pedido in pedidos_pendentes:
-                itens_pedido = df[df["Pedido"].astype(str).str.strip() == pedido].copy()
-                try:
-                    registrar_recebimento(pedido, itens_pedido)
-                except Exception as exc:
-                    erros.append(f"Pedido {pedido}: {exc}")
-                else:
-                    confirmados += 1
-
-            if confirmados:
+        st.caption("Pendentes: " + ", ".join(pedidos_pendentes))
+        if st.button(texto_botao, key=f"confirmar_recebimentos_{data.strftime('%Y%m%d')}", use_container_width=True):
+            try:
+                confirmados = registrar_recebimentos([(pedido, data) for pedido in pedidos_pendentes])
+            except Exception as exc:
+                st.error(f"Não foi possível registrar no Histórico: {exc}")
+            else:
                 st.success(f"{confirmados} recebimento(s) registrado(s) no Histórico.")
-            if erros:
-                for erro in erros:
-                    st.error(erro)
-            if confirmados and not erros:
                 st.rerun()
 
     por_fornecedor = (
@@ -1096,10 +1107,17 @@ with coluna_atualizar:
     if st.button("Atualizar dados", use_container_width=True):
         carregar_dados.clear()
         carregar_embarques.clear()
+        carregar_historico_recebimentos.clear()
         st.rerun()
 
 try:
-    recebimentos = preparar_recebimentos(carregar_dados())
+    dados_pedidos = carregar_dados()
+except PlanilhaIndisponivel as exc:
+    st.error(str(exc))
+    st.stop()
+
+try:
+    recebimentos = preparar_recebimentos(dados_pedidos)
 except Exception as exc:
     recebimentos = preparar_recebimentos(pd.DataFrame())
     st.warning("Não foi possível carregar a aba Pedidos.")
