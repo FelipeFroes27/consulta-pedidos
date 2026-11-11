@@ -8,8 +8,11 @@ import pandas as pd
 import streamlit as st
 
 from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
+from utils.etiquetas import gerar_etiquetas_pdf, normalizar_codigo
 from utils.pick import gerar_pick_pdf
 from utils.sheets import (
+    carregar_produtos,
+    registrar_etiquetas,
     PlanilhaIndisponivel,
     carregar_dados,
     carregar_historico_recebimentos,
@@ -343,6 +346,103 @@ def render_picks(df, data, pedidos_dia):
             )
 
 
+def _situacao_etiqueta(codigo, produtos):
+    if codigo not in produtos.index:
+        return None, "Código não encontrado"
+    ean = str(produtos.at[codigo, "EAN"] or "").strip()
+    return (produtos.loc[codigo], "") if ean else (None, "Produto sem EAN-13 cadastrado")
+
+
+def render_etiquetas(df, data, pedidos_dia):
+    st.markdown("**Etiquetas EAN-13 (100 x 30 mm)**")
+    try:
+        produtos = carregar_produtos()
+    except Exception as exc:
+        st.warning(f"Não foi possível ler o cadastro de produtos: {exc}")
+        return
+    if produtos.empty:
+        st.info("O cadastro de produtos ainda não foi carregado. Rode a atualização do ERP.")
+        return
+
+    chave_data = data.strftime("%Y%m%d")
+    if len(pedidos_dia) > 1:
+        pedido = st.selectbox("Pedido", pedidos_dia, key=f"etiquetas_pedido_{chave_data}")
+    else:
+        pedido = pedidos_dia[0]
+
+    linhas = []
+    for _, item in df[df["Pedido"] == pedido].iterrows():
+        codigo = normalizar_codigo(item["Codigo"])
+        produto, problema = _situacao_etiqueta(codigo, produtos)
+        linhas.append({
+            "Imprimir": produto is not None,
+            "Código": codigo,
+            "Descrição": item["Descricao"],
+            "EAN": produto["EAN"] if produto is not None else problema,
+            "QTD": int(round(float(item["Quantidade"] or 0))),
+            "Cópias": 1,
+        })
+    tabela = pd.DataFrame(linhas)
+
+    editada = st.data_editor(
+        tabela,
+        key=f"etiquetas_tabela_{chave_data}_{pedido}",
+        hide_index=True,
+        use_container_width=True,
+        disabled=["Código", "Descrição", "EAN"],
+        column_config={
+            "Imprimir": st.column_config.CheckboxColumn("Imprimir", width="small"),
+            "QTD": st.column_config.NumberColumn("QTD", min_value=0, step=1, help="Quantidade escrita na etiqueta. Deixe 0 para omitir."),
+            "Cópias": st.column_config.NumberColumn("Cópias", min_value=1, max_value=500, step=1),
+        },
+    )
+
+    sem_etiqueta = tabela[tabela["Imprimir"] == False]  # noqa: E712
+    if not sem_etiqueta.empty:
+        st.warning(
+            f"{len(sem_etiqueta)} item(ns) sem etiqueta: "
+            + "; ".join(f"{linha['Código']} ({linha['EAN']})" for _, linha in sem_etiqueta.iterrows())
+        )
+
+    marcadas = editada[editada["Imprimir"] & editada["Código"].map(lambda c: _situacao_etiqueta(c, produtos)[0] is not None)]
+    paginas = int(marcadas["Cópias"].fillna(1).clip(lower=1).sum()) if not marcadas.empty else 0
+    chave_pdf = f"etiquetas_pdf_{chave_data}_{pedido}"
+
+    if st.button(f"Gerar etiquetas ({paginas} página(s))", key=f"gerar_{chave_pdf}", disabled=paginas == 0, use_container_width=True):
+        itens = []
+        for _, linha in marcadas.iterrows():
+            produto = produtos.loc[linha["Código"]]
+            quantidade = int(linha["QTD"] or 0)
+            itens.append({
+                "codigo": linha["Código"],
+                "descricao": produto["Descricao"] or linha["Descrição"],
+                "referencia": produto["Referencia"],
+                "ean": produto["EAN"],
+                "quantidade": quantidade or None,
+                "copias": int(linha["Cópias"] or 1),
+            })
+        st.session_state[chave_pdf] = gerar_etiquetas_pdf(itens)
+        try:
+            registrar_etiquetas([
+                [pedido, formatar_data(data), item["codigo"], item["ean"], item["quantidade"] or "", item["copias"]]
+                for item in itens
+            ])
+        except Exception as exc:
+            st.warning(f"Etiquetas geradas, mas não foi possível registrar o histórico: {exc}")
+
+    if chave_pdf in st.session_state:
+        st.download_button(
+            "Baixar etiquetas (PDF)",
+            data=st.session_state[chave_pdf],
+            file_name=f"etiquetas_pedido_{pedido}_{chave_data}.pdf",
+            mime="application/pdf",
+            key=f"baixar_{chave_pdf}",
+            on_click="ignore",
+            use_container_width=True,
+        )
+        st.caption("Imprima a 100% (sem \"ajustar à página\") no papel de etiqueta 100 x 30 mm.")
+
+
 def render_detalhe_recebimentos(df, data):
     pedidos = df["Pedido"].nunique()
     itens = total_itens(df)
@@ -363,6 +463,7 @@ def render_detalhe_recebimentos(df, data):
 
     render_confirmacao(df, data, pedidos_dia)
     render_picks(df, data, pedidos_dia)
+    render_etiquetas(df, data, pedidos_dia)
 
     por_fornecedor = (
         df.groupby("Fornecedor")

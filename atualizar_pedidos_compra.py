@@ -1,4 +1,4 @@
-"""Atualiza a aba "Pedido de compra" da planilha da agenda com os dados do ERP Millennium.
+"""Atualiza as abas "Pedido de compra" e "Produtos" da planilha da agenda com o ERP Millennium.
 
 Traz os pedidos de compra ainda nao recebidos (Efetuado = False, aprovados ou nao) com
 entrega a partir de DIAS_ATRASO dias atras, uma linha por item, nas mesmas colunas do
@@ -10,6 +10,9 @@ Conexao com o ERP (mesma regra da skill erp-millennium-conexao):
   - Direto: sem ERP_GATEWAY_URL, usa a sessao do ERP deste PC (token_atual.json em
     ERP_MILLENNIUM_RAIZ, padrao C:\\Projetos\\erp_millennium). Se a sessao expirar, tenta
     recapturar o token do ERP aberto em modo debug.
+
+A aba "Produtos" e o cadastro usado nas etiquetas EAN-13 (codigo, descricao, referencia,
+EAN valido e outros EAN), uma linha por produto.
 
 Credenciais do Google: .streamlit/secrets.toml (gcp_service_account e spreadsheet_id).
 
@@ -31,9 +34,17 @@ import gspread
 import requests
 from google.oauth2.service_account import Credentials
 
+from utils.etiquetas import escolher_ean
+
 
 PASTA = Path(__file__).resolve().parent
 ABA = "Pedido de compra"
+ABA_PRODUTOS = "Produtos"
+CABECALHO_PRODUTOS = ["Codigo", "Descricao", "Referencia", "EAN", "Outros EAN"]
+SELECT_PRODUTOS = "produto.produto.cod_produto as c,produto.produto.descricao1 as d,produto.produto.referencia as ref"
+# barra.barras e uma juncao: so traz produtos com codigo de barras, por isso fica numa consulta a parte.
+SELECT_BARRAS = "produto.produto.cod_produto as c,barra.barras as b"
+FILTRO_TODOS_PRODUTOS = "produto.produto.cod_produto >= '0'"
 DIAS_ATRASO = 30
 
 ERP_HOST = "http://179.124.192.37:6017"
@@ -188,24 +199,44 @@ def montar_linhas(registros):
     return sorted(linhas, key=chave)
 
 
+def montar_produtos(cadastro, barras):
+    """Uma linha por produto do cadastro, com o EAN escolhido entre os codigos de barras dele."""
+    produtos = {}
+    for r in cadastro:
+        codigo = _texto(r.get("C"))
+        if codigo:
+            produtos[codigo] = {"descricao": _texto(r.get("D")), "referencia": _texto(r.get("REF")), "barras": []}
+    for r in barras:
+        produto = produtos.get(_texto(r.get("C")))
+        if produto is not None and r.get("B"):
+            produto["barras"].append(str(r["B"]).strip())
+
+    linhas = []
+    for codigo in sorted(produtos):
+        produto = produtos[codigo]
+        ean, outros = escolher_ean(produto["barras"])
+        linhas.append([codigo, produto["descricao"], produto["referencia"], ean, " ".join(outros)])
+    return linhas
+
+
 # ==================================================
 # GOOGLE SHEETS
 # ==================================================
 
-def abrir_aba():
+def abrir_aba(nome=ABA, colunas=len(CABECALHO)):
     segredos = tomllib.loads((PASTA / ".streamlit" / "secrets.toml").read_text(encoding="utf-8"))
     credenciais = Credentials.from_service_account_info(
         segredos["gcp_service_account"], scopes=["https://www.googleapis.com/auth/spreadsheets"],
     )
     planilha = gspread.authorize(credenciais).open_by_key(segredos["spreadsheet_id"])
     try:
-        return planilha.worksheet(ABA)
+        return planilha.worksheet(nome)
     except gspread.WorksheetNotFound:
-        return planilha.add_worksheet(ABA, rows=1000, cols=len(CABECALHO))
+        return planilha.add_worksheet(nome, rows=1000, cols=colunas)
 
 
-def gravar(aba, linhas):
-    valores = [CABECALHO] + linhas
+def gravar(aba, linhas, cabecalho=CABECALHO):
+    valores = [cabecalho] + linhas
     total_linhas = len(valores)
     if aba.row_count < total_linhas:
         aba.add_rows(total_linhas - aba.row_count)
@@ -234,14 +265,28 @@ def main():
         # Resposta vazia quase sempre e falha de consulta: nao apaga a aba.
         raise SystemExit("Nenhuma linha retornada pelo ERP. A planilha não foi alterada.")
 
+    if not args.simular:
+        gravar(abrir_aba(), linhas)
+        print(f"Aba '{ABA}' atualizada.")
+
+    print("Consultando o cadastro de produtos e códigos de barras...")
+    produtos = montar_produtos(
+        consultar_erp(SELECT_PRODUTOS, FILTRO_TODOS_PRODUTOS),
+        consultar_erp(SELECT_BARRAS, FILTRO_TODOS_PRODUTOS),
+    )
+    com_ean = sum(1 for linha in produtos if linha[3])
+    print(f"{len(produtos)} produto(s), {com_ean} com EAN-13 válido.")
+    if not produtos:
+        raise SystemExit("Nenhum produto retornado pelo ERP. A aba Produtos não foi alterada.")
+
     if args.simular:
-        for linha in linhas[:5]:
+        for linha in linhas[:3] + produtos[:3]:
             print(" | ".join(linha))
         print("Simulação: nada gravado.")
         return
 
-    gravar(abrir_aba(), linhas)
-    print(f"Aba '{ABA}' atualizada.")
+    gravar(abrir_aba(ABA_PRODUTOS, len(CABECALHO_PRODUTOS)), produtos, CABECALHO_PRODUTOS)
+    print(f"Aba '{ABA_PRODUTOS}' atualizada.")
 
 
 if __name__ == "__main__":

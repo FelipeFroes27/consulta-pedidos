@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 import gspread
 import unicodedata
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from google.oauth2.service_account import Credentials
 
 
@@ -55,6 +55,9 @@ def abrir_planilha():
 ABA_PEDIDOS = ["Pedidos", "Pedido de compra"]
 ABA_HISTORICO = "Histórico"
 CABECALHO_HISTORICO = ["Pedido", "Data de entrega (sistema)", "Data de recebimento"]
+ABA_PRODUTOS = "Produtos"
+ABA_ETIQUETAS = "Etiquetas"
+CABECALHO_ETIQUETAS = ["Gerado em", "Pedido", "Data agendada", "Codigo", "EAN", "Quantidade", "Copias"]
 
 
 def _aba(*nomes, obrigatoria=True):
@@ -80,6 +83,29 @@ def _registros(aba):
 def carregar_dados():
 
     return _registros(_aba(*ABA_PEDIDOS))
+
+
+@st.cache_data(ttl=3600)
+def carregar_produtos():
+    """Cadastro de produtos com EAN, gravado pelo atualizar_pedidos_compra.py. Indexado pelo codigo."""
+    df = _registros(_aba(ABA_PRODUTOS, obrigatoria=False))
+    if df.empty or "Codigo" not in df.columns:
+        return pd.DataFrame(columns=["Descricao", "Referencia", "EAN", "Outros EAN"])
+    df["Codigo"] = df["Codigo"].fillna("").astype(str).str.strip().str.zfill(5)
+    return df.drop_duplicates("Codigo").set_index("Codigo")
+
+
+def registrar_etiquetas(linhas):
+    """Historico de geracao: uma linha por item impresso (pedido, data, codigo, EAN, qtd, copias)."""
+    if not linhas:
+        return
+    aba = _aba(ABA_ETIQUETAS, obrigatoria=False)
+    if aba is None:
+        aba = abrir_planilha().add_worksheet(ABA_ETIQUETAS, rows=1000, cols=len(CABECALHO_ETIQUETAS))
+        aba.update([CABECALHO_ETIQUETAS], "A1")
+    # Horario de Brasilia mesmo quando o app roda num servidor em UTC.
+    gerado_em = datetime.now(timezone(timedelta(hours=-3))).strftime("%d/%m/%Y %H:%M")
+    aba.append_rows([[gerado_em, *linha] for linha in linhas], value_input_option="RAW")
 
 
 @st.cache_data(ttl=60)
