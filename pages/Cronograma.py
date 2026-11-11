@@ -1,5 +1,6 @@
 import base64
 import calendar
+import math
 import unicodedata
 from html import escape
 from pathlib import Path
@@ -191,6 +192,77 @@ def recebimentos_do_dia(recebimentos, data):
     return recebimentos[recebimentos["Data Agenda"] == data].copy()
 
 
+ESTILO_CARD_DIA = """
+<style>
+div[class*="st-key-celula_"] {position: relative; gap: 0 !important;}
+div[class*="st-key-celula_"] [data-testid="stElementContainer"]:has(.stButton) {
+    position: absolute !important; top: 0; left: 0; z-index: 2; margin: 0 !important;
+    width: calc(100% - 0.3cm) !important; height: 126px !important;
+}
+div[class*="st-key-celula_"] .stButton, div[class*="st-key-celula_"] .stButton > button {
+    width: 100% !important; height: 100% !important; min-height: 0 !important; opacity: 0 !important; cursor: pointer;
+}
+.dia-card {
+    height: 126px; margin: 0 0.3cm 0.3cm 0; box-sizing: border-box; overflow: hidden;
+    background: #ffffff; border: 1px solid #e4e7ec; border-radius: 10px;
+    font-family: inherit; transition: border-color .15s, transform .15s;
+}
+.dia-card.com-pedido {border-color: #bbf7d0;}
+.dia-card.hoje {border: 2px solid #2563eb;}
+.dia-card.fora-mes {opacity: .55;}
+div[class*="st-key-celula_"]:hover .dia-card {border-color: #16a34a; transform: translateY(-1px);}
+div[class*="st-key-celula_"]:hover .dia-card.hoje {border-color: #2563eb;}
+.dia-topo {display: flex; justify-content: space-between; align-items: center; padding: 6px 10px;}
+.dia-card.com-pedido .dia-topo {background: #86efac;}
+.dia-numero {font-size: 16px; font-weight: 800; color: #98a2b3; line-height: 1.2;}
+.dia-card.com-pedido .dia-numero, .dia-card.com-pedido .dia-total {color: #14532d;}
+.dia-card.hoje .dia-numero {color: #1d4ed8;}
+.dia-card.com-pedido.hoje .dia-numero {color: #14532d;}
+.dia-total {font-size: 11px; font-weight: 700;}
+.dia-lista {padding: 5px 10px;}
+.dia-linha {display: flex; justify-content: space-between; gap: 6px; font-size: 13px; line-height: 1.5;}
+.dia-linha b {color: #101828; font-weight: 800;}
+.dia-linha span {color: #667085; white-space: nowrap;}
+.dia-mais {font-size: 12px; color: #667085; line-height: 1.5;}
+</style>
+"""
+
+
+def card_dia_html(data, recebimentos_dia, fora_mes, hoje):
+    """Card do dia: numero no topo e, embaixo, cada pedido com a quantidade de unidades."""
+    classes = ["dia-card"]
+    if not recebimentos_dia.empty:
+        classes.append("com-pedido")
+    if hoje:
+        classes.append("hoje")
+    if fora_mes:
+        classes.append("fora-mes")
+
+    titulo = f"{data.day} · hoje" if hoje else str(data.day)
+    total, lista = "", ""
+    if not recebimentos_dia.empty:
+        por_pedido = (
+            recebimentos_dia[recebimentos_dia["Pedido"].astype(str).str.strip() != ""]
+            .groupby("Pedido", sort=False)["Quantidade"].sum()
+        )
+        qtd_pedidos = len(por_pedido)
+        total = f'<span class="dia-total">{qtd_pedidos} pedido{"s" if qtd_pedidos != 1 else ""}</span>'
+        linhas = [
+            f'<div class="dia-linha"><b>{escape(str(pedido))}</b><span>{numero(qtde)} un</span></div>'
+            for pedido, qtde in por_pedido.head(MAX_PEDIDOS_NO_DIA).items()
+        ]
+        if qtd_pedidos > MAX_PEDIDOS_NO_DIA:
+            restantes = qtd_pedidos - MAX_PEDIDOS_NO_DIA
+            linhas.append(f'<div class="dia-mais">+{restantes} pedido{"s" if restantes != 1 else ""}</div>')
+        lista = f'<div class="dia-lista">{"".join(linhas)}</div>'
+
+    return (
+        f'<div class="{" ".join(classes)}">'
+        f'<div class="dia-topo"><span class="dia-numero">{escape(titulo)}</span>{total}</div>'
+        f"{lista}</div>"
+    )
+
+
 def recebimentos_do_mes(recebimentos, periodo):
     if recebimentos.empty:
         return recebimentos
@@ -345,10 +417,23 @@ def montar_etiqueta(item, produtos, quantidade, copias):
     }
 
 
+def copias_por_quantidade(valor):
+    """Uma etiqueta por unidade recebida (quantidade fracionada arredonda para cima)."""
+    try:
+        numero = float(valor or 0)
+    except (TypeError, ValueError):
+        numero = 0
+    return max(1, math.ceil(numero - 1e-9))
+
+
+def total_etiquetas(itens):
+    return sum(item["copias"] for item in itens)
+
+
 def etiquetas_padrao(itens_df, produtos):
-    """Uma etiqueta por item (QTD = quantidade do pedido, 1 copia). Devolve (itens, avisos)."""
+    """Uma etiqueta por unidade do pedido (copias = quantidade). Devolve (itens, avisos)."""
     itens = [
-        montar_etiqueta(item, produtos, int(round(float(item["Quantidade"] or 0))), 1)
+        montar_etiqueta(item, produtos, None, copias_por_quantidade(item["Quantidade"]))
         for _, item in itens_df.iterrows()
     ]
     avisos = [f"{item['codigo']} ({item['aviso']})" for item in itens if item["aviso"]]
@@ -402,7 +487,7 @@ def render_picks(df, data, pedidos_dia):
             )
         with coluna_etiquetas:
             _botao_etiquetas(
-                f"Baixar etiquetas de todos ({len(itens_dia)})",
+                f"Baixar etiquetas de todos ({numero(total_etiquetas(itens_dia))})",
                 itens_dia, data, f"etiquetas_{chave_data}.pdf", f"etiquetas_dia_{chave_data}", sem_dia,
             )
 
@@ -427,13 +512,13 @@ def render_picks(df, data, pedidos_dia):
             )
         with coluna_etiquetas:
             _botao_etiquetas(
-                f"Baixar etiquetas ({len(itens_etiqueta)})",
+                f"Baixar etiquetas ({numero(total_etiquetas(itens_etiqueta))})",
                 itens_etiqueta, data, f"etiquetas_pedido_{pedido}_{chave_data}.pdf",
                 f"etiquetas_{pedido}_{chave_data}", sem_etiqueta,
             )
 
     st.caption(
-        "Etiquetas: uma por item, com QTD igual à quantidade do pedido. Itens sem EAN-13 "
+        "Etiquetas: uma por unidade (30 unidades = 30 etiquetas). Itens sem EAN-13 "
         "cadastrado saem sem código de barras. "
         "Imprima a 100% (sem \"ajustar à página\") no papel 100 x 30 mm."
     )
@@ -465,8 +550,8 @@ def _render_etiquetas_ajustaveis(df, data, pedidos_dia):
             "Código": codigo,
             "Descrição": item["Descricao"],
             "EAN": ean or f"Sem código de barras ({aviso})",
-            "QTD": int(round(float(item["Quantidade"] or 0))),
-            "Cópias": 1,
+            "QTD": 0,
+            "Cópias": copias_por_quantidade(item["Quantidade"]),
         })
 
     editada = st.data_editor(
@@ -478,7 +563,7 @@ def _render_etiquetas_ajustaveis(df, data, pedidos_dia):
         column_config={
             "Imprimir": st.column_config.CheckboxColumn("Imprimir", width="small"),
             "QTD": st.column_config.NumberColumn("QTD", min_value=0, step=1, help="Quantidade escrita na etiqueta. Deixe 0 para omitir."),
-            "Cópias": st.column_config.NumberColumn("Cópias", min_value=1, max_value=500, step=1),
+            "Cópias": st.column_config.NumberColumn("Cópias", min_value=1, max_value=5000, step=1, help="Quantas etiquetas imprimir. Já vem com a quantidade do pedido."),
         },
     )
 
@@ -491,7 +576,7 @@ def _render_etiquetas_ajustaveis(df, data, pedidos_dia):
     if sem_codigo:
         st.info(f"{len(sem_codigo)} etiqueta(s) sairão sem código de barras: " + "; ".join(sem_codigo))
 
-    paginas = sum(item["copias"] for item in itens)
+    paginas = total_etiquetas(itens)
     _botao_etiquetas(
         f"Baixar etiquetas ajustadas ({paginas} página(s))",
         itens, data, f"etiquetas_pedido_{pedido}_{chave_data}.pdf",
@@ -1203,70 +1288,21 @@ with col_calendario:
             with semana_header[indice]:
                 st.markdown(f'<div class="weekday">{dia}</div>', unsafe_allow_html=True)
 
-        estilo_base = "border-color: #000000 !important; color: #000000 !important;"
+        st.markdown(ESTILO_CARD_DIA, unsafe_allow_html=True)
         calendario = calendar.Calendar(firstweekday=0)
         for semana in calendario.monthdatescalendar(mes_selecionado.year, mes_selecionado.month):
             cols = st.columns(7, gap=None)
             for indice, data in enumerate(semana):
-                fora_mes = data.month != mes_selecionado.month
                 recebimentos_dia = recebimentos_do_dia(recebimentos, data)
-                tem_recebimento = not recebimentos_dia.empty
-
-                # Cada linha vira um paragrafo no rotulo do botao: dia e numeros dos pedidos de compra.
-                linhas_botao = [f"**{data.day}**"]
-                if tem_recebimento:
-                    pedidos_dia = [pedido for pedido in dict.fromkeys(recebimentos_dia["Pedido"]) if pedido]
-                    linhas_botao += pedidos_dia[:MAX_PEDIDOS_NO_DIA]
-                    if len(pedidos_dia) > MAX_PEDIDOS_NO_DIA:
-                        linhas_botao.append(f"+{len(pedidos_dia) - MAX_PEDIDOS_NO_DIA} pedido(s)")
-                texto_botao = "\n\n".join(linhas_botao)
-
-                fundo = "#86efac" if tem_recebimento else "#ffffff"
-                estilo_botao = f"background: {fundo} !important; {estilo_base}"
-                if fora_mes:
-                    estilo_botao += " opacity: .55 !important;"
-                if data == hoje:
-                    estilo_botao += " outline: 3px solid #2563eb !important; outline-offset: 1px !important;"
-
                 with cols[indice]:
-                    chave_dia = f"cal_{data.strftime('%Y_%m_%d')}"
-                    st.markdown(
-                        f"""
-                        <style>
-                        .st-key-{chave_dia} button {{
-                            min-height: 126px !important;
-                            padding: 8px !important;
-                            white-space: pre-line !important;
-                            line-height: 1.25 !important;
-                            font-size: 15px !important;
-                            font-weight: 800 !important;
-                            border-radius: 0 !important;
-                            width: calc(100% - 0.3cm) !important;
-                            box-sizing: border-box !important;
-                            margin: 0 0.3cm 0.3cm 0 !important;
-                            {estilo_botao}
-                        }}
-                        .st-key-{chave_dia} button [data-testid="stMarkdownContainer"] {{
-                            display: flex !important;
-                            flex-direction: column !important;
-                            align-items: center !important;
-                            gap: 2px !important;
-                        }}
-                        .st-key-{chave_dia} button p {{
-                            margin: 0 !important;
-                            font-size: 14px !important;
-                            font-weight: 700 !important;
-                        }}
-                        .st-key-{chave_dia} button p:first-child {{
-                            font-size: 16px !important;
-                            margin-bottom: 4px !important;
-                        }}
-                        </style>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                    if st.button(texto_botao, key=chave_dia, use_container_width=True):
-                        abrir_detalhe_dia(data, recebimentos)
+                    chave = data.strftime("%Y_%m_%d")
+                    with st.container(key=f"celula_{chave}"):
+                        st.markdown(
+                            card_dia_html(data, recebimentos_dia, data.month != mes_selecionado.month, data == hoje),
+                            unsafe_allow_html=True,
+                        )
+                        if st.button(f"Abrir {formatar_data(data)}", key=f"cal_{chave}", use_container_width=True):
+                            abrir_detalhe_dia(data, recebimentos)
 
         st.markdown(
             """
