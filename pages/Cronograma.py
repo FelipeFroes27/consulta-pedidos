@@ -40,6 +40,8 @@ MESES_PT = {
     12: "Dezembro",
 }
 
+MAX_PEDIDOS_NO_DIA = 3
+
 DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 
 COLUNAS_RECEBIMENTO = [
@@ -312,30 +314,102 @@ def render_confirmacao(df, data, pedidos_dia):
             st.rerun()
 
 
+def _carregar_produtos_seguro():
+    try:
+        return carregar_produtos(), ""
+    except Exception as exc:
+        return pd.DataFrame(), f"Não foi possível ler o cadastro de produtos: {exc}"
+
+
+def etiquetas_padrao(itens_df, produtos):
+    """Etiquetas com os padroes: QTD = quantidade do pedido e 1 copia. Devolve (itens, sem_etiqueta)."""
+    itens, sem_etiqueta = [], []
+    for _, item in itens_df.iterrows():
+        codigo = normalizar_codigo(item["Codigo"])
+        produto, problema = _situacao_etiqueta(codigo, produtos) if not produtos.empty else (None, "Cadastro de produtos indisponível")
+        if produto is None:
+            sem_etiqueta.append(f"{codigo} ({problema})")
+            continue
+        quantidade = int(round(float(item["Quantidade"] or 0)))
+        itens.append({
+            "pedido": item["Pedido"],
+            "codigo": codigo,
+            "descricao": produto["Descricao"] or item["Descricao"],
+            "referencia": produto["Referencia"],
+            "ean": produto["EAN"],
+            "quantidade": quantidade or None,
+            "copias": 1,
+        })
+    return itens, sem_etiqueta
+
+
+def _registrar_historico_etiquetas(itens, data):
+    try:
+        registrar_etiquetas([
+            [item["pedido"], formatar_data(data), item["codigo"], item["ean"], item["quantidade"] or "", item["copias"]]
+            for item in itens
+        ])
+    except Exception:
+        pass  # o download nao pode falhar por causa do historico
+
+
+def _botao_etiquetas(rotulo, itens, data, nome_arquivo, chave, sem_etiqueta):
+    ajuda = None
+    if sem_etiqueta:
+        ajuda = "Sem etiqueta: " + "; ".join(sem_etiqueta)
+    if not itens:
+        st.button(rotulo, key=chave, disabled=True, use_container_width=True,
+                  help=ajuda or "Nenhum item com EAN-13 cadastrado.")
+        return
+    st.download_button(
+        rotulo,
+        data=gerar_etiquetas_pdf(itens),
+        file_name=nome_arquivo,
+        mime="application/pdf",
+        key=chave,
+        on_click=_registrar_historico_etiquetas,
+        args=(itens, data),
+        use_container_width=True,
+        help=ajuda,
+    )
+
+
 def render_picks(df, data, pedidos_dia):
-    st.markdown("**Pick para conferência**")
+    st.markdown("**Pick e etiquetas para conferência**")
     chave_data = data.strftime("%Y%m%d")
+    produtos, erro_produtos = _carregar_produtos_seguro()
+    if erro_produtos:
+        st.warning(erro_produtos)
 
     if len(pedidos_dia) > 1:
-        st.download_button(
-            f"Baixar pick de todos os pedidos do dia ({len(pedidos_dia)})",
-            data=gerar_pick_pdf(df, data),
-            file_name=f"pick_{chave_data}.pdf",
-            mime="application/pdf",
-            key=f"pick_dia_{chave_data}",
-            use_container_width=True,
-        )
+        itens_dia, sem_dia = etiquetas_padrao(df, produtos)
+        coluna_pick, coluna_etiquetas = st.columns(2)
+        with coluna_pick:
+            st.download_button(
+                f"Baixar pick de todos os pedidos ({len(pedidos_dia)})",
+                data=gerar_pick_pdf(df, data),
+                file_name=f"pick_{chave_data}.pdf",
+                mime="application/pdf",
+                key=f"pick_dia_{chave_data}",
+                use_container_width=True,
+            )
+        with coluna_etiquetas:
+            _botao_etiquetas(
+                f"Baixar etiquetas de todos ({len(itens_dia)})",
+                itens_dia, data, f"etiquetas_{chave_data}.pdf", f"etiquetas_dia_{chave_data}", sem_dia,
+            )
 
     for pedido in pedidos_dia:
         itens_pedido = df[df["Pedido"] == pedido]
         fornecedor = itens_pedido["Fornecedor"].iloc[0]
-        coluna_texto, coluna_botao = st.columns([3, 1], vertical_alignment="center")
+        itens_etiqueta, sem_etiqueta = etiquetas_padrao(itens_pedido, produtos)
+        coluna_texto, coluna_pick, coluna_etiquetas = st.columns([3, 1, 1.2], vertical_alignment="center")
         with coluna_texto:
             st.markdown(
                 f"**Pedido {escape(pedido)}** · {escape(fornecedor)} · "
                 f"{len(itens_pedido)} linha(s), {numero(total_itens(itens_pedido))} un."
             )
-        with coluna_botao:
+        with coluna_pick:
             st.download_button(
                 "Baixar pick",
                 data=gerar_pick_pdf(itens_pedido, data),
@@ -344,6 +418,17 @@ def render_picks(df, data, pedidos_dia):
                 key=f"pick_{pedido}_{chave_data}",
                 use_container_width=True,
             )
+        with coluna_etiquetas:
+            _botao_etiquetas(
+                f"Baixar etiquetas ({len(itens_etiqueta)})",
+                itens_etiqueta, data, f"etiquetas_pedido_{pedido}_{chave_data}.pdf",
+                f"etiquetas_{pedido}_{chave_data}", sem_etiqueta,
+            )
+
+    st.caption(
+        "Etiquetas: uma por item com EAN-13, com QTD igual à quantidade do pedido. "
+        "Imprima a 100% (sem \"ajustar à página\") no papel 100 x 30 mm."
+    )
 
 
 def _situacao_etiqueta(codigo, produtos):
@@ -354,7 +439,11 @@ def _situacao_etiqueta(codigo, produtos):
 
 
 def render_etiquetas(df, data, pedidos_dia):
-    st.markdown("**Etiquetas EAN-13 (100 x 30 mm)**")
+    with st.expander("Ajustar quantidades e cópias das etiquetas"):
+        _render_etiquetas_ajustaveis(df, data, pedidos_dia)
+
+
+def _render_etiquetas_ajustaveis(df, data, pedidos_dia):
     try:
         produtos = carregar_produtos()
     except Exception as exc:
@@ -1154,14 +1243,21 @@ with col_calendario:
             for indice, data in enumerate(semana):
                 fora_mes = data.month != mes_selecionado.month
                 recebimentos_dia = recebimentos_do_dia(recebimentos, data)
-                tem_recebimento = not fora_mes and not recebimentos_dia.empty
+                tem_recebimento = not recebimentos_dia.empty
 
-                texto_botao = f"{data.day}"
+                # Cada linha vira um paragrafo no rotulo do botao: dia e numeros dos pedidos de compra.
+                linhas_botao = [f"**{data.day}**"]
                 if tem_recebimento:
-                    texto_botao += f"\n\nR {numero(total_itens(recebimentos_dia))}"
+                    pedidos_dia = [pedido for pedido in dict.fromkeys(recebimentos_dia["Pedido"]) if pedido]
+                    linhas_botao += pedidos_dia[:MAX_PEDIDOS_NO_DIA]
+                    if len(pedidos_dia) > MAX_PEDIDOS_NO_DIA:
+                        linhas_botao.append(f"+{len(pedidos_dia) - MAX_PEDIDOS_NO_DIA} pedido(s)")
+                texto_botao = "\n\n".join(linhas_botao)
 
                 fundo = "#86efac" if tem_recebimento else "#ffffff"
                 estilo_botao = f"background: {fundo} !important; {estilo_base}"
+                if fora_mes:
+                    estilo_botao += " opacity: .55 !important;"
                 if data == hoje:
                     estilo_botao += " outline: 3px solid #2563eb !important; outline-offset: 1px !important;"
 
@@ -1183,11 +1279,26 @@ with col_calendario:
                             margin: 0 0.3cm 0.3cm 0 !important;
                             {estilo_botao}
                         }}
+                        .st-key-{chave_dia} button [data-testid="stMarkdownContainer"] {{
+                            display: flex !important;
+                            flex-direction: column !important;
+                            align-items: center !important;
+                            gap: 2px !important;
+                        }}
+                        .st-key-{chave_dia} button p {{
+                            margin: 0 !important;
+                            font-size: 14px !important;
+                            font-weight: 700 !important;
+                        }}
+                        .st-key-{chave_dia} button p:first-child {{
+                            font-size: 16px !important;
+                            margin-bottom: 4px !important;
+                        }}
                         </style>
                         """,
                         unsafe_allow_html=True,
                     )
-                    if st.button(texto_botao, key=chave_dia, use_container_width=True, disabled=fora_mes):
+                    if st.button(texto_botao, key=chave_dia, use_container_width=True):
                         abrir_detalhe_dia(data, recebimentos)
 
         st.markdown(
