@@ -8,17 +8,17 @@ import pandas as pd
 import streamlit as st
 
 from utils.display_mode import ativar_modo_exibicao, render_menu_lateral
+from utils.pick import gerar_pick_pdf
 from utils.sheets import (
     PlanilhaIndisponivel,
     carregar_dados,
-    carregar_embarques,
     carregar_historico_recebimentos,
     recebimentos_registrados,
     registrar_recebimentos,
 )
 
 
-st.set_page_config(page_title="Agenda Logística", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Agenda de Recebimentos", layout="wide", initial_sidebar_state="expanded")
 ativar_modo_exibicao("agenda")
 
 
@@ -38,6 +38,20 @@ MESES_PT = {
 }
 
 DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+
+COLUNAS_RECEBIMENTO = [
+    "Data Agenda",
+    "Pedido",
+    "Fornecedor",
+    "Empresa",
+    "Emissao",
+    "Observacao",
+    "Codigo",
+    "Descricao",
+    "Cor",
+    "UN",
+    "Quantidade",
+]
 
 
 def normalizar_coluna(nome):
@@ -93,106 +107,32 @@ def preparar_recebimentos(df_original):
     df = df_original.copy()
     coluna_data = encontrar_coluna(df, ["Data Entrega", "Data de entrega", "Entrega"])
     coluna_pedido = encontrar_coluna(df, ["Numero do Pedido", "Numero Pedido", "Pedido"])
-    coluna_fornecedor = encontrar_coluna(df, ["Forcededor", "Nome Fornecedor", "Razao Social Fornecedor", "Subgrupo", "Fornecedor"])
-    coluna_grupo = encontrar_coluna(df, ["Grupo"])
-    coluna_codigo = encontrar_coluna(df, ["Codigo", "Codigo Produto", "Cod"])
-    coluna_descricao = encontrar_coluna(df, ["Descricao", "Descricao Produto", "Produto"])
-    coluna_qtde = encontrar_coluna(df, ["Qtde", "Quantidade", "Qtd"])
 
-    obrigatorias = [coluna_data, coluna_pedido]
-    if df.empty or any(coluna is None for coluna in obrigatorias):
-        return pd.DataFrame(
-            columns=[
-                "Data Agenda",
-                "Pedido",
-                "Fornecedor",
-                "Grupo",
-                "Codigo",
-                "Descricao",
-                "Quantidade",
-            ]
-        )
+    if df.empty or coluna_data is None or coluna_pedido is None:
+        return pd.DataFrame(columns=COLUNAS_RECEBIMENTO)
 
     df["Data Agenda"] = pd.to_datetime(df[coluna_data], errors="coerce", dayfirst=True).dt.date
     df = df[df["Data Agenda"].notna()].copy()
-
     if df.empty:
-        return df
+        return pd.DataFrame(columns=COLUNAS_RECEBIMENTO)
+
+    def texto(opcoes, padrao=""):
+        coluna = encontrar_coluna(df, opcoes)
+        return texto_serie(df[coluna], padrao) if coluna else padrao
 
     df["Pedido"] = texto_serie(df[coluna_pedido], "")
-    df["Fornecedor"] = texto_serie(df[coluna_fornecedor]) if coluna_fornecedor else "Não informado"
-    df["Grupo"] = texto_serie(df[coluna_grupo]) if coluna_grupo else "Não informado"
-    df["Codigo"] = texto_serie(df[coluna_codigo], "") if coluna_codigo else ""
-    df["Descricao"] = texto_serie(df[coluna_descricao], "") if coluna_descricao else ""
+    df["Fornecedor"] = texto(["Forcededor", "Nome Fornecedor", "Razao Social Fornecedor", "Subgrupo", "Fornecedor"], "Não informado")
+    df["Empresa"] = texto(["Empresa"])
+    df["Emissao"] = texto(["Data Emissao", "Data de Emissão"])
+    df["Observacao"] = texto(["Observacao", "Observação"])
+    df["Codigo"] = texto(["Codigo", "Codigo Produto", "Cod"])
+    df["Descricao"] = texto(["Descricao", "Descricao Produto", "Produto"])
+    df["Cor"] = texto(["Desc Cor", "Cor"])
+    df["UN"] = texto(["UN", "Unidade"])
+    coluna_qtde = encontrar_coluna(df, ["Qtde", "Quantidade", "Qtd"])
     df["Quantidade"] = converter_numero(df[coluna_qtde]) if coluna_qtde else 1
 
-    return df[
-        [
-            "Data Agenda",
-            "Pedido",
-            "Fornecedor",
-            "Grupo",
-            "Codigo",
-            "Descricao",
-            "Quantidade",
-        ]
-    ].copy()
-
-
-def preparar_embarques(df_original):
-    df = df_original.copy()
-    coluna_data = encontrar_coluna(df, ["Data"])
-    coluna_embarque = encontrar_coluna(df, ["Numero do embarque", "Embarque"])
-    coluna_nf = encontrar_coluna(df, ["Numero", "NF", "Nota Fiscal"])
-    coluna_transportadora = encontrar_coluna(df, ["Nome do transportadora", "Transportadora"])
-    coluna_placa = encontrar_coluna(df, ["Placa"])
-    coluna_endereco = encontrar_coluna(df, ["Endereco nota", "Endereço nota", "Endereco", "Endereço"])
-    coluna_pedido_venda = encontrar_coluna(df, ["Pedido de venda", "Pedido venda", "PV"])
-    coluna_codigo_nome = encontrar_coluna(df, ["Código - nome", "Codigo - nome", "Codigo nome", "Código nome"])
-
-    colunas_saida = [
-        "Data Agenda",
-        "Embarque",
-        "NF",
-        "Transportadora",
-        "Placa",
-        "Endereco",
-        "Pedido Venda",
-        "Codigo Nome",
-    ]
-
-    obrigatorias = [coluna_data, coluna_embarque, coluna_nf]
-    if df.empty or any(coluna is None for coluna in obrigatorias):
-        return pd.DataFrame(columns=colunas_saida)
-
-    df["Data Agenda"] = pd.to_datetime(df[coluna_data], errors="coerce", dayfirst=True).dt.date
-    df = df[df["Data Agenda"].notna()].copy()
-
-    if df.empty:
-        return pd.DataFrame(columns=colunas_saida)
-
-    df["Embarque"] = texto_serie(df[coluna_embarque], "")
-    df["NF"] = texto_serie(df[coluna_nf], "")
-    df["Transportadora"] = texto_serie(df[coluna_transportadora]) if coluna_transportadora else "Não informado"
-    df["Placa"] = texto_serie(df[coluna_placa], "") if coluna_placa else ""
-    df["Endereco"] = texto_serie(df[coluna_endereco], "") if coluna_endereco else ""
-    df["Pedido Venda"] = texto_serie(df[coluna_pedido_venda], "") if coluna_pedido_venda else ""
-    df["Codigo Nome"] = texto_serie(df[coluna_codigo_nome], "") if coluna_codigo_nome else ""
-
-    return df[colunas_saida].copy()
-
-
-def classe_prazo(data):
-    hoje = pd.Timestamp.today().normalize().date()
-    dias = (data - hoje).days
-
-    if dias < 0:
-        return "late"
-    if dias == 0:
-        return "today"
-    if dias <= 3:
-        return "soon"
-    return "future"
+    return df[COLUNAS_RECEBIMENTO].copy()
 
 
 def label_prazo(data):
@@ -211,33 +151,19 @@ def label_prazo(data):
 def icone_svg(tipo):
     imagens = {
         "recebimento": "receber.png",
-        "embarque": "entrega-rapida.png",
         "compromisso": "compromisso.png",
     }
-    if tipo in imagens:
-        caminho = Path(imagens[tipo])
-        if caminho.exists():
-            imagem = base64.b64encode(caminho.read_bytes()).decode("utf-8")
-            return f'<img class="agenda-icon-img" src="data:image/png;base64,{imagem}" alt="{escape(tipo)}">'
-
-    icones = {
-        "caixa": """
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M3 7h18v14H3z"></path>
-                <path d="M3 7l3-4h12l3 4"></path>
-                <path d="M12 3v18"></path>
-            </svg>
-        """,
-        "caminhao": """
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M3 6h11v10H3z"></path>
-                <path d="M14 10h4l3 3v3h-7z"></path>
-                <circle cx="7" cy="18" r="2"></circle>
-                <circle cx="17" cy="18" r="2"></circle>
-            </svg>
-        """,
-    }
-    return icones.get(tipo, icones["caixa"])
+    caminho = Path(imagens.get(tipo, "receber.png"))
+    if caminho.exists():
+        imagem = base64.b64encode(caminho.read_bytes()).decode("utf-8")
+        return f'<img class="agenda-icon-img" src="data:image/png;base64,{imagem}" alt="{escape(tipo)}">'
+    return """
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 7h18v14H3z"></path>
+            <path d="M3 7l3-4h12l3 4"></path>
+            <path d="M12 3v18"></path>
+        </svg>
+    """
 
 
 def render_kpi(titulo, valor, nota, classe, icone):
@@ -256,69 +182,47 @@ def render_kpi(titulo, valor, nota, classe, icone):
     )
 
 
-def resumo_data(recebimentos, embarques, data):
-    recebimentos_dia = recebimentos[recebimentos["Data Agenda"] == data].copy()
-    embarques_dia = embarques[embarques["Data Agenda"] == data].copy()
-    return recebimentos_dia, embarques_dia
+def recebimentos_do_dia(recebimentos, data):
+    return recebimentos[recebimentos["Data Agenda"] == data].copy()
 
 
-def resumo_mes(recebimentos, embarques, periodo):
-    recebimentos_mes = recebimentos[pd.to_datetime(recebimentos["Data Agenda"]).dt.to_period("M") == periodo]
-    embarques_mes = embarques[pd.to_datetime(embarques["Data Agenda"]).dt.to_period("M") == periodo]
-    return recebimentos_mes, embarques_mes
+def recebimentos_do_mes(recebimentos, periodo):
+    if recebimentos.empty:
+        return recebimentos
+    return recebimentos[pd.to_datetime(recebimentos["Data Agenda"]).dt.to_period("M") == periodo]
 
 
-def proximos_eventos(df, tipo, limite=4):
+def proximos_recebimentos(df, limite=8):
     hoje = pd.Timestamp.today().normalize().date()
     df_futuro = df[df["Data Agenda"] >= hoje].copy()
     if df_futuro.empty:
-        return pd.DataFrame(columns=["Data Agenda", "Titulo", "Qtd", "Tipo"])
+        return pd.DataFrame(columns=["Data Agenda", "Titulo", "Qtd"])
 
-    if tipo == "recebimento":
-        resumo = (
-            df_futuro.groupby("Data Agenda")
-            .agg(Titulo=("Fornecedor", lambda s: s.value_counts().index[0]), Qtd=("Quantidade", "sum"))
-            .reset_index()
-        )
-    else:
-        resumo = (
-            df_futuro.groupby("Data Agenda")
-            .agg(Titulo=("Transportadora", lambda s: s.value_counts().index[0]), Qtd=("NF", "nunique"))
-            .reset_index()
-        )
-
-    resumo["Tipo"] = tipo
+    resumo = (
+        df_futuro.groupby("Data Agenda")
+        .agg(Titulo=("Fornecedor", lambda s: s.value_counts().index[0]), Qtd=("Quantidade", "sum"))
+        .reset_index()
+    )
     return resumo.sort_values("Data Agenda").head(limite)
 
 
-def render_proximos(recebimentos, embarques):
-    proximos_recebimentos = proximos_eventos(recebimentos, "recebimento")
-    proximos_embarques = proximos_eventos(embarques, "embarque")
-    eventos = pd.concat([proximos_recebimentos, proximos_embarques], ignore_index=True)
+def render_proximos(recebimentos):
+    eventos = proximos_recebimentos(recebimentos)
 
-    st.markdown(
-        '<div class="events-head"><div class="section-title">Próximos eventos</div><button type="button">Ver todos</button></div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="events-head"><div class="section-title">Próximos recebimentos</div></div>', unsafe_allow_html=True)
 
     if eventos.empty:
-        st.markdown('<div class="empty">Nenhum evento futuro encontrado.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="empty">Nenhum recebimento futuro encontrado.</div>', unsafe_allow_html=True)
         return
 
-    eventos = eventos.sort_values(["Data Agenda", "Tipo"]).head(8)
     for _, linha in eventos.iterrows():
-        tipo = "Recebimento" if linha["Tipo"] == "recebimento" else "Embarque"
-        classe = "event-recebimento" if linha["Tipo"] == "recebimento" else "event-embarque"
-        icone = "recebimento" if linha["Tipo"] == "recebimento" else "embarque"
-        unidade = "item" if linha["Tipo"] == "recebimento" and int(linha["Qtd"]) == 1 else "itens"
-        if linha["Tipo"] == "embarque":
-            unidade = "nota" if int(linha["Qtd"]) == 1 else "notas"
+        unidade = "item" if int(linha["Qtd"]) == 1 else "itens"
         st.markdown(
             f"""
-            <div class="mini-event {classe}">
-                <div class="mini-event-icon">{icone_svg(icone)}</div>
+            <div class="mini-event event-recebimento">
+                <div class="mini-event-icon">{icone_svg("recebimento")}</div>
                 <div>
-                    <strong>{escape(tipo)}</strong>
+                    <strong>Recebimento</strong>
                     <span>{escape(label_prazo(linha["Data Agenda"]))} - {formatar_data(linha["Data Agenda"])}</span>
                     <small title="{escape(str(linha["Titulo"]))}">{escape(str(linha["Titulo"]))}</small>
                 </div>
@@ -353,8 +257,8 @@ def render_tabela_html(df, colunas):
 
 
 @st.dialog("Detalhes do dia", width="large")
-def abrir_detalhe_dia(data, recebimentos, embarques):
-    recebimentos_dia, embarques_dia = resumo_data(recebimentos, embarques, data)
+def abrir_detalhe_dia(data, recebimentos):
+    recebimentos_dia = recebimentos_do_dia(recebimentos, data)
 
     st.markdown(
         f"""
@@ -366,32 +270,82 @@ def abrir_detalhe_dia(data, recebimentos, embarques):
         unsafe_allow_html=True,
     )
 
-    if recebimentos_dia.empty and embarques_dia.empty:
-        st.info("Não há recebimentos ou embarques cadastrados para este dia.")
+    if recebimentos_dia.empty:
+        st.info("Não há recebimentos programados para este dia.")
         return
 
-    abas = []
-    if not recebimentos_dia.empty:
-        abas.append("Recebimentos")
-    if not embarques_dia.empty:
-        abas.append("Embarques")
+    render_detalhe_recebimentos(recebimentos_dia, data)
 
-    tabs = st.tabs(abas) if len(abas) > 1 else [st.container()]
 
-    indice = 0
-    if not recebimentos_dia.empty:
-        with tabs[indice]:
-            render_detalhe_recebimentos(recebimentos_dia, data)
-        indice += 1
+def render_confirmacao(df, data, pedidos_dia):
+    try:
+        registrados = recebimentos_registrados()
+    except Exception as exc:
+        st.warning(f"Não foi possível ler a aba Histórico: {exc}")
+        return
 
-    if not embarques_dia.empty:
-        with tabs[indice]:
-            render_detalhe_embarques(embarques_dia)
+    pedidos_pendentes = [pedido for pedido in pedidos_dia if not registrados.contem(pedido, data)]
+
+    st.markdown("**Confirmação de recebimento**")
+    if not pedidos_dia:
+        st.info("Nenhum pedido encontrado para confirmar.")
+        return
+    if not pedidos_pendentes:
+        st.markdown(
+            '<div class="status-box">Todos os recebimentos deste dia já foram registrados.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    texto_botao = "Confirmar recebimento do dia" if len(pedidos_pendentes) == 1 else "Confirmar recebimentos do dia"
+    st.caption("Pendentes: " + ", ".join(pedidos_pendentes))
+    if st.button(texto_botao, key=f"confirmar_recebimentos_{data.strftime('%Y%m%d')}", use_container_width=True):
+        try:
+            confirmados = registrar_recebimentos([(pedido, data) for pedido in pedidos_pendentes])
+        except Exception as exc:
+            st.error(f"Não foi possível registrar no Histórico: {exc}")
+        else:
+            st.success(f"{confirmados} recebimento(s) registrado(s) no Histórico.")
+            st.rerun()
+
+
+def render_picks(df, data, pedidos_dia):
+    st.markdown("**Pick para conferência**")
+    chave_data = data.strftime("%Y%m%d")
+
+    if len(pedidos_dia) > 1:
+        st.download_button(
+            f"Baixar pick de todos os pedidos do dia ({len(pedidos_dia)})",
+            data=gerar_pick_pdf(df, data),
+            file_name=f"pick_{chave_data}.pdf",
+            mime="application/pdf",
+            key=f"pick_dia_{chave_data}",
+            use_container_width=True,
+        )
+
+    for pedido in pedidos_dia:
+        itens_pedido = df[df["Pedido"] == pedido]
+        fornecedor = itens_pedido["Fornecedor"].iloc[0]
+        coluna_texto, coluna_botao = st.columns([3, 1], vertical_alignment="center")
+        with coluna_texto:
+            st.markdown(
+                f"**Pedido {escape(pedido)}** · {escape(fornecedor)} · "
+                f"{len(itens_pedido)} linha(s), {numero(total_itens(itens_pedido))} un."
+            )
+        with coluna_botao:
+            st.download_button(
+                "Baixar pick",
+                data=gerar_pick_pdf(itens_pedido, data),
+                file_name=f"pick_pedido_{pedido}_{chave_data}.pdf",
+                mime="application/pdf",
+                key=f"pick_{pedido}_{chave_data}",
+                use_container_width=True,
+            )
 
 
 def render_detalhe_recebimentos(df, data):
     pedidos = df["Pedido"].nunique()
-    itens = int(df["Quantidade"].sum())
+    itens = total_itens(df)
     fornecedores = df["Fornecedor"].nunique()
 
     st.markdown(
@@ -405,37 +359,10 @@ def render_detalhe_recebimentos(df, data):
         unsafe_allow_html=True,
     )
 
-    pedidos_dia = [str(pedido).strip() for pedido in df["Pedido"].dropna().unique() if str(pedido).strip()]
-    try:
-        registrados = recebimentos_registrados()
-    except Exception as exc:
-        registrados = None
-        st.warning(f"Não foi possível ler a aba Histórico: {exc}")
-    pedidos_pendentes = (
-        [pedido for pedido in pedidos_dia if not registrados.contem(pedido, data)] if registrados else []
-    )
+    pedidos_dia = [pedido for pedido in dict.fromkeys(df["Pedido"].astype(str).str.strip()) if pedido]
 
-    st.markdown("**Confirmação de recebimento**")
-    if registrados is None:
-        pass
-    elif not pedidos_dia:
-        st.info("Nenhum pedido encontrado para confirmar.")
-    elif not pedidos_pendentes:
-        st.markdown(
-            '<div class="status-box">Todos os recebimentos deste dia já foram registrados.</div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        texto_botao = "Confirmar recebimento do dia" if len(pedidos_pendentes) == 1 else "Confirmar recebimentos do dia"
-        st.caption("Pendentes: " + ", ".join(pedidos_pendentes))
-        if st.button(texto_botao, key=f"confirmar_recebimentos_{data.strftime('%Y%m%d')}", use_container_width=True):
-            try:
-                confirmados = registrar_recebimentos([(pedido, data) for pedido in pedidos_pendentes])
-            except Exception as exc:
-                st.error(f"Não foi possível registrar no Histórico: {exc}")
-            else:
-                st.success(f"{confirmados} recebimento(s) registrado(s) no Histórico.")
-                st.rerun()
+    render_confirmacao(df, data, pedidos_dia)
+    render_picks(df, data, pedidos_dia)
 
     por_fornecedor = (
         df.groupby("Fornecedor")
@@ -443,54 +370,14 @@ def render_detalhe_recebimentos(df, data):
         .reset_index()
         .sort_values(["Pedidos", "Itens"], ascending=False)
     )
+    por_fornecedor["Itens"] = por_fornecedor["Itens"].map(numero)
     st.markdown("**Resumo por fornecedor**")
     render_tabela_html(por_fornecedor, ["Fornecedor", "Pedidos", "Itens"])
 
-    detalhes = df[["Pedido", "Fornecedor", "Grupo", "Codigo", "Descricao", "Quantidade"]].copy()
-    detalhes = detalhes.rename(
-        columns={
-            "Codigo": "Código",
-            "Descricao": "Descrição",
-        }
-    )
+    detalhes = df[["Pedido", "Fornecedor", "Codigo", "Descricao", "UN", "Quantidade"]].copy()
+    detalhes = detalhes.rename(columns={"Codigo": "Código", "Descricao": "Descrição"})
     st.markdown("**Itens do dia**")
-    render_tabela_html(detalhes, ["Pedido", "Fornecedor", "Grupo", "Código", "Descrição", "Quantidade"])
-
-
-def render_detalhe_embarques(df):
-    notas = df["NF"].nunique()
-    volumes = len(df)
-    transportadoras = df["Transportadora"].nunique()
-
-    st.markdown(
-        f"""
-        <div class="detail-metrics">
-            <div class="detail-metric"><span>Notas fiscais</span><strong>{numero(notas)}</strong></div>
-            <div class="detail-metric"><span>Volumes</span><strong>{numero(volumes)}</strong></div>
-            <div class="detail-metric"><span>Transportadoras</span><strong>{numero(transportadoras)}</strong></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    por_transportadora = (
-        df.groupby("Transportadora")
-        .agg(Notas=("NF", "nunique"), Volumes=("Codigo Nome", "count"))
-        .reset_index()
-        .sort_values(["Notas", "Volumes"], ascending=False)
-    )
-    st.markdown("**Resumo por transportadora**")
-    render_tabela_html(por_transportadora, ["Transportadora", "Notas", "Volumes"])
-
-    detalhes = df[["Pedido Venda", "NF", "Transportadora", "Placa", "Codigo Nome"]].copy()
-    detalhes = detalhes.rename(
-        columns={
-            "Pedido Venda": "Pedido de venda",
-            "Codigo Nome": "Código - nome",
-        }
-    )
-    st.markdown("**Itens do dia**")
-    render_tabela_html(detalhes, ["Pedido de venda", "NF", "Transportadora", "Placa", "Código - nome"])
+    render_tabela_html(detalhes, ["Pedido", "Fornecedor", "Código", "Descrição", "UN", "Quantidade"])
 
 
 st.markdown(
@@ -682,9 +569,7 @@ st.markdown(
     }
 
     .kpi-recebimento {border-left: 8px solid #86efac;}
-    .kpi-embarque {border-left: 8px solid #fda4af;}
     .kpi-mes {border-left: 8px solid #86efac;}
-    .kpi-alerta {border-left: 8px solid #fda4af;}
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
         padding: 8px 10px;
@@ -761,15 +646,7 @@ st.markdown(
         border-color: #000000 !important;
     }
 
-    .day-embarque .stButton > button {
-        background: #fda4af !important;
-        border-color: #000000 !important;
-    }
 
-    .day-misto .stButton > button {
-        background: linear-gradient(135deg, #86efac 0 50%, #fda4af 50% 100%) !important;
-        border-color: #000000 !important;
-    }
 
     .day-today .stButton > button {
         outline: 3px solid #2563eb !important;
@@ -802,8 +679,6 @@ st.markdown(
     }
 
     .legend-recebimento::before {background: #86efac;}
-    .legend-embarque::before {background: #fda4af;}
-    .legend-misto::before {background: linear-gradient(135deg, #86efac 0 49%, #fda4af 50% 100%);}
 
     .section-title {
         margin: 0 0 12px 0;
@@ -833,7 +708,7 @@ st.markdown(
 
     .mini-event {
         display: grid;
-        grid-template-columns: 52px minmax(0, 1fr) 54px;
+        grid-template-columns: 52px minmax(0, 1fr) 72px;
         align-items: center;
         gap: 12px;
         margin-bottom: 8px;
@@ -896,10 +771,6 @@ st.markdown(
     .event-recebimento {
         background: #ffffff;
         border-left: 8px solid #86efac;
-    }
-    .event-embarque {
-        background: #ffffff;
-        border-left: 8px solid #fda4af;
     }
 
     .empty {
@@ -1089,8 +960,8 @@ st.markdown(
     f"""
     <div class="page-head">
         <div class="page-title">
-            <h1>Agenda Logística</h1>
-            <p>Calendário mensal com recebimentos e embarques programados.</p>
+            <h1>Agenda de Recebimentos</h1>
+            <p>Calendário mensal com os recebimentos programados.</p>
         </div>
         <div class="page-logos">
             <img src="data:image/bmp;base64,{logo_branco}" alt="Trendx">
@@ -1106,7 +977,6 @@ _, coluna_atualizar = st.columns([6, 1])
 with coluna_atualizar:
     if st.button("Atualizar dados", use_container_width=True):
         carregar_dados.clear()
-        carregar_embarques.clear()
         carregar_historico_recebimentos.clear()
         st.rerun()
 
@@ -1120,29 +990,16 @@ try:
     recebimentos = preparar_recebimentos(dados_pedidos)
 except Exception as exc:
     recebimentos = preparar_recebimentos(pd.DataFrame())
-    st.warning("Não foi possível carregar a aba Pedidos.")
-    st.caption(str(exc))
-
-try:
-    embarques = preparar_embarques(carregar_embarques())
-except Exception as exc:
-    embarques = preparar_embarques(pd.DataFrame())
-    st.warning("Não foi possível carregar a aba Embarques.")
+    st.warning("Não foi possível carregar a aba de pedidos.")
     st.caption(str(exc))
 
 hoje = pd.Timestamp.today().normalize().date()
 mes_atual = pd.Timestamp.today().to_period("M")
 
-datas_disponiveis = []
-if not recebimentos.empty:
-    datas_disponiveis += pd.to_datetime(recebimentos["Data Agenda"]).dt.to_period("M").dropna().tolist()
-if not embarques.empty:
-    datas_disponiveis += pd.to_datetime(embarques["Data Agenda"]).dt.to_period("M").dropna().tolist()
-
-if datas_disponiveis:
-    meses = sorted(set(datas_disponiveis))
-else:
+if recebimentos.empty:
     meses = [mes_atual]
+else:
+    meses = sorted(set(pd.to_datetime(recebimentos["Data Agenda"]).dt.to_period("M").dropna().tolist()))
 
 idx_padrao = meses.index(mes_atual) if mes_atual in meses else len(meses) - 1
 
@@ -1152,18 +1009,18 @@ if "agenda_mes_idx" not in st.session_state:
 st.session_state.agenda_mes_idx = max(0, min(st.session_state.agenda_mes_idx, len(meses) - 1))
 mes_selecionado = meses[st.session_state.agenda_mes_idx]
 
-recebimentos_mes, embarques_mes = resumo_mes(recebimentos, embarques, mes_selecionado)
-recebimentos_hoje, embarques_hoje = resumo_data(recebimentos, embarques, hoje)
+recebimentos_mes = recebimentos_do_mes(recebimentos, mes_selecionado)
+recebimentos_hoje = recebimentos_do_dia(recebimentos, hoje)
 
 k1, k2, k3, k4 = st.columns(4)
 with k1:
     render_kpi("Recebimentos hoje", numero(total_itens(recebimentos_hoje)), "Itens previstos", "kpi-recebimento", "recebimento")
 with k2:
-    render_kpi("Embarques hoje", numero(embarques_hoje["NF"].nunique()), "Notas fiscais previstas", "kpi-embarque", "embarque")
+    render_kpi("Pedidos hoje", numero(recebimentos_hoje["Pedido"].nunique()), "Pedidos a receber", "kpi-recebimento", "compromisso")
 with k3:
-    render_kpi("Recebimentos do mês", numero(total_itens(recebimentos_mes)), "Itens no calendário", "kpi-mes", "compromisso")
+    render_kpi("Recebimentos do mês", numero(total_itens(recebimentos_mes)), "Itens no calendário", "kpi-mes", "recebimento")
 with k4:
-    render_kpi("Embarques do mês", numero(embarques_mes["NF"].nunique()), "Notas fiscais no calendário", "kpi-alerta", "compromisso")
+    render_kpi("Pedidos do mês", numero(recebimentos_mes["Pedido"].nunique()), "Pedidos no calendário", "kpi-mes", "compromisso")
 
 col_calendario, col_lateral = st.columns([3.35, 1], gap="medium")
 
@@ -1189,54 +1046,26 @@ with col_calendario:
             with semana_header[indice]:
                 st.markdown(f'<div class="weekday">{dia}</div>', unsafe_allow_html=True)
 
+        estilo_base = "border-color: #000000 !important; color: #000000 !important;"
         calendario = calendar.Calendar(firstweekday=0)
         for semana in calendario.monthdatescalendar(mes_selecionado.year, mes_selecionado.month):
             cols = st.columns(7, gap=None)
             for indice, data in enumerate(semana):
-                recebimentos_dia, embarques_dia = resumo_data(recebimentos, embarques, data)
-                tem_recebimento = not recebimentos_dia.empty
-                tem_embarque = not embarques_dia.empty
                 fora_mes = data.month != mes_selecionado.month
-
-                classes = ["calendar-day"]
-                if fora_mes:
-                    classes.append("day-empty")
-                elif tem_recebimento and tem_embarque:
-                    classes.append("day-misto")
-                elif tem_recebimento:
-                    classes.append("day-recebimento")
-                elif tem_embarque:
-                    classes.append("day-embarque")
-                else:
-                    classes.append("day-empty")
-
-                if data == hoje:
-                    classes.append("day-today")
+                recebimentos_dia = recebimentos_do_dia(recebimentos, data)
+                tem_recebimento = not fora_mes and not recebimentos_dia.empty
 
                 texto_botao = f"{data.day}"
-                if not fora_mes:
-                    marcadores_dia = []
-                    if tem_recebimento:
-                        marcadores_dia.append(f"R {total_itens(recebimentos_dia)}")
-                    if tem_embarque:
-                        marcadores_dia.append(f"E {embarques_dia['NF'].nunique()}")
-                    if marcadores_dia:
-                        texto_botao += "\n\n" + "    ".join(marcadores_dia)
+                if tem_recebimento:
+                    texto_botao += f"\n\nR {numero(total_itens(recebimentos_dia))}"
+
+                fundo = "#86efac" if tem_recebimento else "#ffffff"
+                estilo_botao = f"background: {fundo} !important; {estilo_base}"
+                if data == hoje:
+                    estilo_botao += " outline: 3px solid #2563eb !important; outline-offset: 1px !important;"
 
                 with cols[indice]:
                     chave_dia = f"cal_{data.strftime('%Y_%m_%d')}"
-                    if "day-misto" in classes:
-                        estilo_botao = "background: linear-gradient(135deg, #86efac 0 50%, #fda4af 50% 100%) !important; border-color: #000000 !important; color: #000000 !important;"
-                    elif "day-recebimento" in classes:
-                        estilo_botao = "background: #86efac !important; border-color: #000000 !important; color: #000000 !important;"
-                    elif "day-embarque" in classes:
-                        estilo_botao = "background: #fda4af !important; border-color: #000000 !important; color: #000000 !important;"
-                    else:
-                        estilo_botao = "background: #ffffff !important; border-color: #000000 !important; color: #000000 !important;"
-
-                    if data == hoje:
-                        estilo_botao += " outline: 3px solid #2563eb !important; outline-offset: 1px !important;"
-
                     st.markdown(
                         f"""
                         <style>
@@ -1257,22 +1086,13 @@ with col_calendario:
                         """,
                         unsafe_allow_html=True,
                     )
-                    clicou = st.button(
-                        texto_botao,
-                        key=chave_dia,
-                        use_container_width=True,
-                        disabled=fora_mes,
-                    )
-
-                    if clicou:
-                        abrir_detalhe_dia(data, recebimentos, embarques)
+                    if st.button(texto_botao, key=chave_dia, use_container_width=True, disabled=fora_mes):
+                        abrir_detalhe_dia(data, recebimentos)
 
         st.markdown(
             """
             <div class="legend-row">
-                <span class="legend-dot legend-recebimento">Recebimento</span>
-                <span class="legend-dot legend-embarque">Embarque</span>
-                <span class="legend-dot legend-misto">Recebimento e embarque</span>
+                <span class="legend-dot legend-recebimento">Recebimento programado</span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1280,4 +1100,4 @@ with col_calendario:
 
 with col_lateral:
     with st.container(border=True):
-        render_proximos(recebimentos, embarques)
+        render_proximos(recebimentos)

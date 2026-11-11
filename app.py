@@ -210,8 +210,8 @@ st.markdown(
         <div>
             <h1 class="home-title">Sistema Logístico</h1>
             <p class="home-copy">
-                Monitore pedidos, recebimentos e embarques em uma visão operacional única,
-                com foco em datas, fornecedores, transportadoras e volumes.
+                Acompanhe os pedidos de compra e os recebimentos programados,
+                com confirmação de entrega e pick para conferência.
             </p>
         </div>
         <div class="home-panel">
@@ -222,7 +222,7 @@ st.markdown(
             </div>
             <div class="home-section">
                 Aba Agenda
-                <span>Calendário mensal com recebimentos, embarques e confirmação ao clicar no dia.</span>
+                <span>Calendário de recebimentos, confirmação e pick de conferência ao clicar no dia.</span>
             </div>
         </div>
     </div>

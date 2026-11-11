@@ -54,7 +54,6 @@ def abrir_planilha():
 
 ABA_PEDIDOS = ["Pedidos", "Pedido de compra"]
 ABA_HISTORICO = "Histórico"
-ABA_EMBARQUES = "Embarques"
 CABECALHO_HISTORICO = ["Pedido", "Data de entrega (sistema)", "Data de recebimento"]
 
 
@@ -263,23 +262,3 @@ def _encontrar_coluna(df, nomes):
         if coluna is not None:
             return coluna
     return None
-
-
-# ==================================================
-# EMBARQUES
-# ==================================================
-
-@st.cache_data(ttl=300)
-def carregar_embarques():
-    """Le a aba Embarques sem alterar a planilha.
-
-    Remove em memoria apenas linhas 100% identicas (todas as colunas iguais),
-    que sao as repeticoes de importacao. Volumes diferentes do mesmo produto na
-    mesma NF continuam sendo contados.
-    """
-    df = _registros(_aba(ABA_EMBARQUES, obrigatoria=False))
-    if df.empty:
-        return df
-
-    chave = df.fillna("").astype(str).apply(lambda coluna: coluna.str.strip())
-    return df[~chave.duplicated(keep="first")].copy()
